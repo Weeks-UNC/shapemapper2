@@ -1,0 +1,29 @@
+#!/bin/bash
+#----------------------------------------------------------------------#
+# This file is a part of ShapeMapper, and is licensed under the terms  #
+# of the MIT license. Copyright 2017 Steven Busan.                     #
+#----------------------------------------------------------------------#
+
+# Find the parent folder of this script,
+# resolving (possibly nested) symlinks
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do
+    THIS_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+    SOURCE="$(readlink "$SOURCE")"
+    [[ $SOURCE != /* ]] && SOURCE="$THIS_DIR/$SOURCE"
+done
+THIS_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+
+
+# Locating the parent directory doesn't work in all contexts
+# (e.g. inside a Docker container AFAICT) so look at an
+# environment var in those cases
+if [ ! -z "${SHAPEMAPPER_ROOT_DIR}" ]; then
+    THIS_DIR="${SHAPEMAPPER_ROOT_DIR}"
+fi
+
+source ${THIS_DIR}/install/bin_paths.sh
+
+exec python3 ${THIS_DIR}/python/cli.py "$@"
+
+
