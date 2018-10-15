@@ -1,7 +1,7 @@
 #!/bin/bash
 #----------------------------------------------------------------------#
 # This file is a part of ShapeMapper, and is licensed under the terms  #
-# of the MIT license. Copyright 2017 Steven Busan.                     #
+# of the MIT license. Copyright 2018 Steven Busan.                     #
 #----------------------------------------------------------------------#
 
 # Find the parent folder of this script,
@@ -22,8 +22,8 @@ if [ ! -z "${SHAPEMAPPER_ROOT_DIR}" ]; then
     THIS_DIR="${SHAPEMAPPER_ROOT_DIR}"
 fi
 
-source ${THIS_DIR}/install/bin_paths.sh
+source ${THIS_DIR}/internals/install/bin_paths.sh
 
-exec python3 ${THIS_DIR}/python/cli.py "$@"
+exec python3 ${THIS_DIR}/internals/python/cli.py "$@"
 
 
