@@ -45,7 +45,7 @@ provided to ShapeMapper using <kbd>--random-primer-len</kbd>.
 #### Amplicon primers
 For most users, simply set primer binding sites to lowercase sequence in the input
 .fa file, and run ShapeMapper with the <kbd>--amplicon</kbd> option. This will handle
-cases with a single pair of primers on either end of the target.
+cases with a single pair of primers on either end of the target sequence.
 
 For more complex cases with internal PCR primer locations or multiple pairs of primers, run 
 ShapeMapper with a [primers file](file_formats.md#primers-file) 
@@ -102,7 +102,7 @@ which remains an art, especially with noisy reads from reverse transcription.
 
 Care should be taken that identical sequences are not provided to ShapeMapper,
 as this will result in reads aligning to multiple targets with similar alignment
-scores and failing to meet <kbd>--min-mapq</kbd>.
+scores and therefore failing to meet <kbd>--min-mapq</kbd>.
 
 If sequences are not available, the <kbd>--render-mutations</kbd>
 ShapeMapper option can be useful in some cases. This will render individual reads 
@@ -118,7 +118,7 @@ so the <kbd>--max-paired-fragment-length</kbd> parameter may need to be lowered.
 <h4 name="long-reads"> </h4>
 
 ### Can I run ShapeMapper using reads from PacBio or other long-read sequencing platforms?
-see [Read length](analysis_steps.md#read-length)
+Not currently (see [Read length](analysis_steps.md#read-length)).
 
 ---
 

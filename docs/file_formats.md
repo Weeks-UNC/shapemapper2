@@ -121,6 +121,8 @@ Ribosketch. Single column of normalized reactivity values.
 Reactivities above 0.85 are set to 0.85, reactivities below
 0 are set to 0, and missing data positions are set to 0.
 
+&nbsp;&nbsp;&nbsp;&nbsp;
+
 ### `<name>_<RNA>_profiles.pdf`
 
 Figures showing read depths, mutation rates, and reactivity profile.
@@ -138,7 +140,8 @@ Figures showing read depth, mutation rate and reactivity histograms.
 Figures showing simple mapped read depths. Shows reads excluded due to low 
 aligner-reported MAPQ (mapping quality score), and shows off-target reads excluded
 due to not aligning near expected amplicon primer pair locations. 
-Reads included in analysis are further broken down by primer pair.
+Reads included in analysis are further broken down by primer pair. 
+See [example plots](analysis_steps.md#mapped-depth-plots).
 
 &nbsp;&nbsp;&nbsp;&nbsp;
 
@@ -168,7 +171,7 @@ read merging steps are performed.
 ### Aligned reads
 
 Commandline option: <kbd>--output-aligned-reads</kbd>
-Filename: `*_aligned.sam` if bowtie2 used or `*_aligned_paired.sam` and '*_aligned_unpaired.sam' if STAR used
+Filename: `*_aligned.sam` if bowtie2 used or `*_aligned_paired.sam` and `*_aligned_unpaired.sam` if STAR used.
 Format: SAM
 
 &nbsp;&nbsp;&nbsp;&nbsp;
@@ -236,12 +239,12 @@ pairs.
 _Effective read depths:_
 Read coverage excluding primer regions, low-quality basecalls, and
 the covered region of multinucleotide mutations excepting the inferred
-adduct site. These arrays are summed to give the denominator in calculating
+adduct site. These arrays are summed to give the denominator used in calculating
 mutation rate.
 
 _Mutation counts:_
 '`1`' indicates inferred adduct sites for a single read. These arrays are summed
-to give the numerator in calculating mutation rate.
+to give the numerator used in calculating mutation rate.
 
 
 #### _Mutations:_

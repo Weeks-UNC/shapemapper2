@@ -121,19 +121,19 @@ shapemapper <parameters> <inputs> | --version | --help
 --amplicon   Require reads to align near expected primer pair locations, and
              intelligently trim primer sites. If a single pair of primers on 
              the ends of the RNA sequence is used, simply set primer sequences
-             to lowercase in the `--target `fasta file. If multiple pairs or 
-             internal locations are needed, specify primers with a `--primers`
+             to lowercase in the '--target' fasta file. If multiple pairs or 
+             internal locations are needed, specify primers with a '--primers'
              file.
 
      --primers <primers_file>
              Amplicon primer pair sequences. Each line should contain a pair of 
-             primer sequences - the forward primer first followed by the reverse 
+             primer sequences: the forward primer first followed by the reverse 
              primer, separated by whitespace. To specify primers for multiple RNAs,
              add a line with each RNA name preceded by '>' before each group of
              primer pairs. RNA names must match those in any provided .fa files.
 
      --max-primer-offset <n>
-             If `--amplicon` and/or `--primers` used, require read ends to align to 
+             If '--amplicon' and/or '--primers' used, require read ends to align to 
              within +/- this many nucleotides of expected amplicon primer pairs. 
              Default=10
 
@@ -152,26 +152,26 @@ shapemapper <parameters> <inputs> | --version | --help
 
      --rerun-on-star-segfault
              Automatically rerun ShapeMapper analyses that fail due to STAR segfault.
-             The value of --genomeSAindexNbase will be replaced with the value of
-             --rerun-genomeSAindexNbase. Default=False
+             The value of '--genomeSAindexNbase' will be replaced with the value of
+             '--rerun-genomeSAindexNbase'. Default=False
 
      --rerun-genomeSAindexNbase <n>
              Default=3
 
      --star-shared-index
-             Enable shared memory index
+             Enable shared memory index. Default=False
 
 --preserve-order
              Preserve the order of input reads through all analysis stages. May
-             slow down execution, but can be usefull for debugging. Default=False
+             slow down execution, but can be useful for debugging. Default=False
 
 --nproc <n>  Number of processors to use for sequence alignment (corresponding
-             to Bowtie2's "-p" parameter and STAR's "runThreadN" parameter). 
+             to Bowtie2's '-p' parameter and STAR's '--runThreadN' parameter). 
              Default=4
 
 --max-paired-fragment-length <n>
              Maximum distance between aligned ends of non-overlapping mate pairs 
-             to be merged into a single read (analogous to bowtie2 --maxins).
+             to be merged into a single read (analogous to bowtie2 '--maxins').
              Default=800
 
 --min-depth  <n>
@@ -182,18 +182,12 @@ shapemapper <parameters> <inputs> | --version | --help
              Maximum allowed mutation frequency in untreated sample. Default=0.05
 
 --min-mapq <n>
-             Minimum reported mapping quality for including reads. Default=10
+             Minimum aligner-reported mapping quality for included reads. Default=10
              Note: When using Bowtie2, mutations contribute to lower mapping
              quality. Therefore, raising this threshold will have the side effect
              of excluding highly mutated reads.
              Note: This option does not apply to sequence correction, which uses
              a threshold of 10 regardless of this option
-
---min-qual-to-count <n>
-             Only count mutations with all basecall quality scores meeting this
-             minimum score (including the immediate upstream and downstream 
-             basecalls). This threshold is also used when computing the 
-             effective read depth. Default=30
 
 --min-qual-to-trim <n>
              Minimum phred score in initial basecall quality trimming. 
@@ -206,19 +200,22 @@ shapemapper <parameters> <inputs> | --version | --help
              Minimum trimmed read length in initial basecall quality trimming.
              Default=25
 
---min-qual-to-count
-             Default=30
+--min-qual-to-count <n>
+             Only count mutations with all basecall quality scores meeting this
+             minimum score (including the immediate upstream and downstream 
+             basecalls). This threshold is also used when computing the 
+             effective read depth. Default=30
 
 --indiv-norm Normalize multiple reactivity profiles individually, instead of as a
              group. Default=False
 
 --min-seq-depth <n>
              Minimum sequencing depth for making a sequence correction (with
-             --correct-seq). Default=50
+             '--correct-seq'). Default=50
 
 --min-freq <n>
              Minimum mutation frequency for making a sequence correction (with
-             --correct-seq). Default=0.6
+             '--correct-seq'). Default=0.6
 
 --disable-soft-clipping
              Disable soft-clipping (i.e. perform end-to-end rather than local 
@@ -238,10 +235,10 @@ shapemapper <parameters> <inputs> | --version | --help
              will be merged and treated as a single mutation. Does not apply to 
              sequence correction. Default=6
 
---output-processed | --output-processed-reads
---output-aligned
---output-parsed | --output-parsed-mutations
---output-counted | --output-counted-mutations
+--output-processed-reads
+--output-aligned-reads
+--output-parsed-mutations
+--output-counted-mutations
              Produce output files for selected intermediate components. Default=False
 
 --render-flowchart
@@ -251,19 +248,20 @@ shapemapper <parameters> <inputs> | --version | --help
 
 --render-mutations
              Render pdf files showing detailed read and mutation processing steps 
-             for each sample and RNA target, up to --max-pages. Primarily a debugging
+             for each sample and RNA target, up to '--max-pages'. Primarily a debugging
              tool, but can be useful to visually inspect individual reads for the
              presence of pseudogenes.
 
---max-pages <n>
-             Maximum pages to render for --render-mutations. Default=100
+     --max-pages <n>
+             Maximum pages to render for '--render-mutations'. Default=100
 
 --per-read-histograms
-             Output read length and mutation frequency histogram tables in log file.
+             Output read length and per-read mutation frequency histogram tables in 
+             log file.
 
 --structured-output
              Output all files in a folder hierarchy matching the pipeline organization.
-             If this option is provided, "--temp" folder will not be used.
+             If this option is provided, '--temp' folder will not be used.
              Default behavior is to generate files and folders in a hierarchy in
              the temp folder, except for important output files which are
              generated in the main output folder.
@@ -343,11 +341,6 @@ the release. These should be compatible with most 64-bit Linux platforms,
 even fairly old ones.
 
 In the rare case that a rebuild is necessary, see [Building](docs/building.md)
-
-### Source code documentation
-C++ documentation at `cpp-src/doc/html/index.html`
-
-Python documentation in source code comments (folder `python`)
 
 ### Version history
 see [Version history](docs/changelog.md)

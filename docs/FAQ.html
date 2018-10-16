@@ -1132,7 +1132,7 @@ provided to ShapeMapper using <kbd>--random-primer-len</kbd>.</p>
 <a id="user-content-amplicon-primers" class="anchor" href="#amplicon-primers" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Amplicon primers</h4>
 <p>For most users, simply set primer binding sites to lowercase sequence in the input
 .fa file, and run ShapeMapper with the <kbd>--amplicon</kbd> option. This will handle
-cases with a single pair of primers on either end of the target.</p>
+cases with a single pair of primers on either end of the target sequence.</p>
 <p>For more complex cases with internal PCR primer locations or multiple pairs of primers, run
 ShapeMapper with a <a href="file_formats.html#primers-file">primers file</a>
 input with
@@ -1180,7 +1180,7 @@ sequences of contaminating transcripts - this would require a sequence assembly,
 which remains an art, especially with noisy reads from reverse transcription.</p>
 <p>Care should be taken that identical sequences are not provided to ShapeMapper,
 as this will result in reads aligning to multiple targets with similar alignment
-scores and failing to meet <kbd>--min-mapq</kbd>.</p>
+scores and therefore failing to meet <kbd>--min-mapq</kbd>.</p>
 <p>If sequences are not available, the <kbd>--render-mutations</kbd>
 ShapeMapper option can be useful in some cases. This will render individual reads
 and their mutations (and debugging info that can be ignored) up to <kbd>--max-pages</kbd>.
@@ -1194,7 +1194,7 @@ so the <kbd>--max-paired-fragment-length</kbd> parameter may need to be lowered.
 <a id="user-content---6" class="anchor" href="#--6" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a> </h4>
 <h3>
 <a id="user-content-can-i-run-shapemapper-using-reads-from-pacbio-or-other-long-read-sequencing-platforms" class="anchor" href="#can-i-run-shapemapper-using-reads-from-pacbio-or-other-long-read-sequencing-platforms" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Can I run ShapeMapper using reads from PacBio or other long-read sequencing platforms?</h3>
-<p>see <a href="analysis_steps.html#read-length">Read length</a></p>
+<p>Not currently (see <a href="analysis_steps.html#read-length">Read length</a>).</p>
 <hr>
 <h4 name="user-content-citation">
 <a id="user-content---7" class="anchor" href="#--7" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a> </h4>

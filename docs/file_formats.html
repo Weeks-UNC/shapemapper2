@@ -1251,6 +1251,7 @@ stderr, fourth is nucleotide sequence.</p>
 Ribosketch. Single column of normalized reactivity values.
 Reactivities above 0.85 are set to 0.85, reactivities below
 0 are set to 0, and missing data positions are set to 0.</p>
+<p>    </p>
 <h3>
 <a id="user-content-name_rna_profilespdf" class="anchor" href="#name_rna_profilespdf" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a><code>&lt;name&gt;_&lt;RNA&gt;_profiles.pdf</code>
 </h3>
@@ -1267,7 +1268,8 @@ Reactivities above 0.85 are set to 0.85, reactivities below
 <p>Figures showing simple mapped read depths. Shows reads excluded due to low
 aligner-reported MAPQ (mapping quality score), and shows off-target reads excluded
 due to not aligning near expected amplicon primer pair locations.
-Reads included in analysis are further broken down by primer pair.</p>
+Reads included in analysis are further broken down by primer pair.
+See <a href="analysis_steps.html#mapped-depth-plots">example plots</a>.</p>
 <p>    </p>
 <h3>
 <a id="user-content-name_rna_per-amplicon_abundancetxt" class="anchor" href="#name_rna_per-amplicon_abundancetxt" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a><code>&lt;name&gt;_&lt;RNA&gt;_per-amplicon_abundance.txt</code>
@@ -1286,7 +1288,7 @@ read merging steps are performed.</p>
 <h3>
 <a id="user-content-aligned-reads" class="anchor" href="#aligned-reads" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Aligned reads</h3>
 <p>Commandline option: <kbd>--output-aligned-reads</kbd>
-Filename: <code>*_aligned.sam</code> if bowtie2 used or <code>*_aligned_paired.sam</code> and '*_aligned_unpaired.sam' if STAR used
+Filename: <code>*_aligned.sam</code> if bowtie2 used or <code>*_aligned_paired.sam</code> and <code>*_aligned_unpaired.sam</code> if STAR used.
 Format: SAM</p>
 <p>    </p>
 <h3>
@@ -1387,11 +1389,11 @@ pairs.</p>
 <p><em>Effective read depths:</em>
 Read coverage excluding primer regions, low-quality basecalls, and
 the covered region of multinucleotide mutations excepting the inferred
-adduct site. These arrays are summed to give the denominator in calculating
+adduct site. These arrays are summed to give the denominator used in calculating
 mutation rate.</p>
 <p><em>Mutation counts:</em>
 '<code>1</code>' indicates inferred adduct sites for a single read. These arrays are summed
-to give the numerator in calculating mutation rate.</p>
+to give the numerator used in calculating mutation rate.</p>
 <h4>
 <a id="user-content-mutations" class="anchor" href="#mutations" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a><em>Mutations:</em>
 </h4>

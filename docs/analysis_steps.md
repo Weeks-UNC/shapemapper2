@@ -164,8 +164,8 @@ extremely long reads, such as those produced by PacBio or Oxford Nanopore
 sequencing platforms. This is an area for future work, and will involve
 incorporating a long-read aligner into ShapeMapper. If existing long-read 
 alignments can be coerced into a SAM format, it may be possible to run
-`bin/shapemapper_mutation_parser` followed by `bin/shapemapper_mutation_counter`, but
-this is untested.
+`internals/bin/shapemapper_mutation_parser` followed by `internals/bin/shapemapper_mutation_counter`, 
+but this is untested.
 
 #### Paired read handling
 If input reads are unpaired (<kbd>--U</kbd> or <kbd>--unpaired-folder</kbd>),
@@ -649,13 +649,16 @@ reactivities above a threshold are excluded
 That threshold is selected from
 the largest value out of
 
-    [1.5 × interquartile range, \
+    [1.5 × interquartile range,
     90th percentile (if total seq length > 100) or 95th percentile (if total seq length < 100)].
 
 By default, ShapeMapper normalizes all profiles together - 
 that is, using the combined set of reactivities to compute 
 a single normalization factor that is applied to all profiles.
 This can be disabled by passing the <kbd>--indiv-norm</kbd> option.
+
+_Example:_
+![reactivity example](images/reactivity_TPP.png)
 
 _Limitations:_
 
@@ -675,10 +678,6 @@ models of the distributions of reactivities observed for paired and unpaired
 nucleotides. This would allow more accurate 
 structure modeling for highly structured or highly unstructured RNAs 
 as well as providing an estimate of overall base pairing percentage.
-
-_Example:_
-![reactivity example](images/reactivity_TPP.png)
-
 
 ---
 &nbsp;&nbsp;&nbsp;&nbsp;
@@ -709,8 +708,8 @@ uneven sequencing coverage, some regions of an RNA may have
 higher-quality reactivity data than other regions. For example, 
 coverage is often lower near transcript ends.
 
-If read depths are low, check alignment stats to see the amount of 
-target sequence present in each sample. Better target enrichment or 
+If read depths are low, check alignment stats in the logfile to see the 
+amount of target sequence present in each sample. Better target enrichment or 
 recovery and/or additional sequencing can often help.
 
 
@@ -739,7 +738,7 @@ mutation pattern from distinct reads. By default, these outputs are limited to
 100 pages, controlled with the 
 <kbd>--max-pages</kbd> parameter. The pages are wide enough
 by default to accomodate a maximum paired read length of 800 nts, but this is
-often very zoomed out - lower the 
+often very zoomed out; lower the 
 <kbd>--max-paired-fragment-length</kbd> as needed for
 visualization.
 
@@ -757,7 +756,7 @@ Possible causes for failure:
   some errors).
 - Poor mixing of chemical reagents and RNA and/or poor reagent 
   diffusion (if modifying in cells), resulting in low 
-  modification rates.
+  modification rates
 - Expired reagents, resulting in low modification rates
 - Poor reverse transcription conditions, resulting in low adduct 
   read-through

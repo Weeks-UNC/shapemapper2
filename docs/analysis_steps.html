@@ -1227,8 +1227,8 @@ extremely long reads, such as those produced by PacBio or Oxford Nanopore
 sequencing platforms. This is an area for future work, and will involve
 incorporating a long-read aligner into ShapeMapper. If existing long-read
 alignments can be coerced into a SAM format, it may be possible to run
-<code>bin/shapemapper_mutation_parser</code> followed by <code>bin/shapemapper_mutation_counter</code>, but
-this is untested.</p>
+<code>internals/bin/shapemapper_mutation_parser</code> followed by <code>internals/bin/shapemapper_mutation_counter</code>,
+but this is untested.</p>
 <h4>
 <a id="user-content-paired-read-handling" class="anchor" href="#paired-read-handling" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Paired read handling</h4>
 <p>If input reads are unpaired (<kbd>--U</kbd> or <kbd>--unpaired-folder</kbd>),
@@ -1600,13 +1600,15 @@ reactivities above a threshold are excluded
 (see section 3.2.1 in <a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2941709/" rel="nofollow">Low and Weeks, 2010</a>).
 That threshold is selected from
 the largest value out of</p>
-<pre><code>[1.5 × interquartile range, \
+<pre><code>[1.5 × interquartile range,
 90th percentile (if total seq length &gt; 100) or 95th percentile (if total seq length &lt; 100)].
 </code></pre>
 <p>By default, ShapeMapper normalizes all profiles together -
 that is, using the combined set of reactivities to compute
 a single normalization factor that is applied to all profiles.
 This can be disabled by passing the <kbd>--indiv-norm</kbd> option.</p>
+<p><em>Example:</em>
+<a href="images/reactivity_TPP.png" target="_blank" rel="noopener noreferrer"><img src="images/reactivity_TPP.png" alt="reactivity example" style="max-width:100%;"></a></p>
 <p><em>Limitations:</em></p>
 <p>SHAPE-MaP measures relative probe reactivities, and normalization
 is an attempt to put these relative values on a more meaningful
@@ -1623,8 +1625,6 @@ models of the distributions of reactivities observed for paired and unpaired
 nucleotides. This would allow more accurate
 structure modeling for highly structured or highly unstructured RNAs
 as well as providing an estimate of overall base pairing percentage.</p>
-<p><em>Example:</em>
-<a href="images/reactivity_TPP.png" target="_blank" rel="noopener noreferrer"><img src="images/reactivity_TPP.png" alt="reactivity example" style="max-width:100%;"></a></p>
 <hr>
 <p>    </p>
 <h2>
@@ -1646,8 +1646,8 @@ sequencing depth of 5000 in all provided samples. Note that with
 uneven sequencing coverage, some regions of an RNA may have
 higher-quality reactivity data than other regions. For example,
 coverage is often lower near transcript ends.</p>
-<p>If read depths are low, check alignment stats to see the amount of
-target sequence present in each sample. Better target enrichment or
+<p>If read depths are low, check alignment stats in the logfile to see the
+amount of target sequence present in each sample. Better target enrichment or
 recovery and/or additional sequencing can often help.</p>
 <h4>
 <a id="user-content-positive-mutation-rates-above-background-check" class="anchor" href="#positive-mutation-rates-above-background-check" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Positive mutation rates above background check</h4>
@@ -1671,7 +1671,7 @@ mutation pattern from distinct reads. By default, these outputs are limited to
 100 pages, controlled with the
 <kbd>--max-pages</kbd> parameter. The pages are wide enough
 by default to accomodate a maximum paired read length of 800 nts, but this is
-often very zoomed out - lower the
+often very zoomed out; lower the
 <kbd>--max-paired-fragment-length</kbd> as needed for
 visualization.</p>
 <h4>
@@ -1687,7 +1687,7 @@ reverse transcription under MaP conditions usually generates
 some errors).</li>
 <li>Poor mixing of chemical reagents and RNA and/or poor reagent
 diffusion (if modifying in cells), resulting in low
-modification rates.</li>
+modification rates</li>
 <li>Expired reagents, resulting in low modification rates</li>
 <li>Poor reverse transcription conditions, resulting in low adduct
 read-through</li>
