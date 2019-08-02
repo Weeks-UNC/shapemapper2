@@ -96,10 +96,10 @@ Functions</h2></td></tr>
 <tr class="separator:a2a4959005b85eec88cde6dcec3100f05"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a050f2f6b685a785d1727b7e4c8e0ff4e"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemutation__parser.html#a050f2f6b685a785d1727b7e4c8e0ff4e">isOffTargetPairedRead</a> (const int fw_primer_index, const int rv_primer_index, const bool require_forward_primer_mapped, const bool require_reverse_primer_mapped, const int max_primer_offset)</td></tr>
 <tr class="separator:a050f2f6b685a785d1727b7e4c8e0ff4e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2d2e4260c9791c58fdcd43ad1ba6706c"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemutation__parser.html#a2d2e4260c9791c58fdcd43ad1ba6706c">parseUnpairedRead</a> (const std::string &amp;line, const int min_mapq, const bool right_align_ambig_dels, const bool right_align_ambig_ins, const int max_internal_match, const int min_qual, const int exclude_3prime, const std::string &amp;mutation_type, const bool variant_mode, const std::vector&lt; <a class="el" href="classPrimerPair.html">PrimerPair</a> &gt; &amp;primer_pairs, const bool trim_primers, const bool require_forward_primer_mapped, const bool require_reverse_primer_mapped, const int max_primer_offset, const bool input_is_unpaired, const bool debug)</td></tr>
-<tr class="separator:a2d2e4260c9791c58fdcd43ad1ba6706c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae5e5fa884352add61867bb464275b120"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemutation__parser.html#ae5e5fa884352add61867bb464275b120">parsePairedReads</a> (const std::vector&lt; std::string &gt; &amp;lines, const int max_paired_fragment_length, const int min_mapq, const bool right_align_ambig_dels, const bool right_align_ambig_ins, const int max_internal_match, const int min_qual, const int exclude_3prime, const std::string &amp;mutation_type, const bool variant_mode, const std::vector&lt; <a class="el" href="classPrimerPair.html">PrimerPair</a> &gt; &amp;primer_pairs, const bool trim_primers, const bool require_forward_primer_mapped, const bool require_reverse_primer_mapped, const int max_primer_offset, const bool input_is_unpaired, const bool debug)</td></tr>
-<tr class="separator:ae5e5fa884352add61867bb464275b120"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac23b9fd4298b4ce3bd1d7c59dd854481"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemutation__parser.html#ac23b9fd4298b4ce3bd1d7c59dd854481">parseUnpairedRead</a> (const std::string &amp;line, const int min_mapq, const bool right_align_ambig_dels, const bool right_align_ambig_ins, const int max_internal_match, const int min_qual, const int exclude_3prime, const std::string &amp;mutation_type, const bool variant_mode, const std::vector&lt; <a class="el" href="classPrimerPair.html">PrimerPair</a> &gt; &amp;primer_pairs, const bool trim_primers, const bool require_forward_primer_mapped, const bool require_reverse_primer_mapped, const int max_primer_offset, const bool debug)</td></tr>
+<tr class="separator:ac23b9fd4298b4ce3bd1d7c59dd854481"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae3361ebfc2e8b195a658b5d3dc4e06e2"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemutation__parser.html#ae3361ebfc2e8b195a658b5d3dc4e06e2">parsePairedReads</a> (const std::vector&lt; std::string &gt; &amp;lines, const int max_paired_fragment_length, const int min_mapq, const bool right_align_ambig_dels, const bool right_align_ambig_ins, const int max_internal_match, const int min_qual, const int exclude_3prime, const std::string &amp;mutation_type, const bool variant_mode, const std::vector&lt; <a class="el" href="classPrimerPair.html">PrimerPair</a> &gt; &amp;primer_pairs, const bool trim_primers, const bool require_forward_primer_mapped, const bool require_reverse_primer_mapped, const int max_primer_offset, const bool debug)</td></tr>
+<tr class="separator:ae3361ebfc2e8b195a658b5d3dc4e06e2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad47e781058e0757a0bbf837bbaab8807"><td class="memItemLeft" align="right" valign="top">boost::tuple&lt; bool, bool, bool, bool, bool, bool, bool, bool &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemutation__parser.html#ad47e781058e0757a0bbf837bbaab8807">getReadMappingProperties</a> (std::string line)</td></tr>
 <tr class="separator:ad47e781058e0757a0bbf837bbaab8807"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:adb85a005f5552ed888403a9bff8749d7"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemutation__parser.html#adb85a005f5552ed888403a9bff8749d7">parseSAM</a> (const std::string &amp;filename, const std::string &amp;outname, const std::string &amp;debug_outname, const std::string &amp;primers_filename, const int max_paired_fragment_length, const unsigned int min_mapq, const bool right_align_ambig_dels, const bool right_align_ambig_ins, const int max_internal_match, const int min_qual, const int exclude_3prime, const std::string mutation_type, const bool variant_mode, const bool trim_primers, const bool require_forward_primer_mapped, const bool require_reverse_primer_mapped, const int max_primer_offset, const bool input_is_unpaired, const bool debug, const bool warn_on_no_mapped=false)</td></tr>
@@ -378,8 +378,8 @@ Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="a2d2e4260c9791c58fdcd43ad1ba6706c"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a2d2e4260c9791c58fdcd43ad1ba6706c">&#9670;&nbsp;</a></span>parseUnpairedRead()</h2>
+<a id="ac23b9fd4298b4ce3bd1d7c59dd854481"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac23b9fd4298b4ce3bd1d7c59dd854481">&#9670;&nbsp;</a></span>parseUnpairedRead()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -472,12 +472,6 @@ Functions</h2></td></tr>
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">const bool&#160;</td>
-          <td class="paramname"><em>input_is_unpaired</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">const bool&#160;</td>
           <td class="paramname"><em>debug</em>&#160;</td>
         </tr>
         <tr>
@@ -490,8 +484,8 @@ Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="ae5e5fa884352add61867bb464275b120"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ae5e5fa884352add61867bb464275b120">&#9670;&nbsp;</a></span>parsePairedReads()</h2>
+<a id="ae3361ebfc2e8b195a658b5d3dc4e06e2"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae3361ebfc2e8b195a658b5d3dc4e06e2">&#9670;&nbsp;</a></span>parsePairedReads()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -585,12 +579,6 @@ Functions</h2></td></tr>
           <td></td>
           <td class="paramtype">const int&#160;</td>
           <td class="paramname"><em>max_primer_offset</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">const bool&#160;</td>
-          <td class="paramname"><em>input_is_unpaired</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>

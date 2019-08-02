@@ -22,7 +22,9 @@ BF::path getTestFileDir() {
         filedir = BF::path(FILEPATH).parent_path() / "files";
     } else {
         filedir = BF::path(BASEPATH) / "internals" / "cpp-src" / "test" / "files";
+        //std::cout << "Using BASEPATH " << BASEPATH << " passed by argument" << std::endl;
     }
+    BF::create_directory(filedir / "tmp");
     return filedir;
 }
 
@@ -215,14 +217,12 @@ TEST(FileHandling, ExceptionOnNearlyEmptyFastq) {
     EXPECT_THROW(read_trimmer::trimFastq(file_in, file_out), std::runtime_error);
 }
 
-// TODO: test the commandline executable?
 
-
-int main(int argc, char* argv[])
-{
-    ::testing::InitGoogleTest(&argc, argv);
-    if (argc >= 2) {
-        BASEPATH = argv[1];
-    }
-    return RUN_ALL_TESTS();
+int main(int argc, char **argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  // set location of top-level shapemapper path so we can locate data files
+  if (argc > 1){
+      BASEPATH = argv[1];
+  }
+  return RUN_ALL_TESTS();
 }

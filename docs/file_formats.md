@@ -75,6 +75,8 @@ amplicon primer pair read depths.
 
 &nbsp;&nbsp;&nbsp;&nbsp;
 
+<a name="profile-format"> </a>
+
 ### `<name>_<RNA>_profile.txt`
 
 Tab-delimited text columns. First line is column names.                     
@@ -98,6 +100,8 @@ Tab-delimited text columns. First line is column names.
 |`Norm_stderr`              |  Standard error after normalization               |
 
 &nbsp;&nbsp;&nbsp;&nbsp;
+
+<a name="shape-format"> </a>
 
 ### `<name>_<RNA>.shape`
 

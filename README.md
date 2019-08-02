@@ -9,7 +9,7 @@ This is a github-flavored markdown file not meant to be easily readable.
 ![](docs/images/header_profile.png)
 **ShapeMapper2**
 ===============
-*Copyright 2018 Steven Busan*. This project is licensed under the terms of the 
+*Copyright 2019 Steven Busan*. This project is licensed under the terms of the 
 MIT license.
 
 ShapeMapper automates the calculation of RNA structure probing reactivities 
@@ -38,18 +38,22 @@ Installation
 ------------
 ShapeMapper will only run on 64-bit Linux systems (Mac and Windows are not currently supported).
 
-- Download latest [release](https://github.com/Weeks-UNC/ShapeMapper2/releases/download/2.1.4/shapemapper-2.1.4.tar.gz)
+- Download latest [release](https://github.com/Weeks-UNC/ShapeMapper2/releases/download/2.1.5/shapemapper-2.1.5.tar.gz)
+    - On most systems, typing `wget https://github.com/Weeks-UNC/ShapeMapper2/releases/download/2.1.5/shapemapper-2.1.5.tar.gz`
+      will download the file on the commandline.
+    - Be sure to download from the `shapemapper-2.1.5.tar.gz` link, _not_ the source code-only links, which
+      do not include executables.
 
 - Extract release tarball using
     
-    `tar -xvf shapemapper-2.1.4.tar.gz`
+    `tar -xvf shapemapper-2.1.5.tar.gz`
 
 - Add shapemapper executable to PATH (optional - google this if you don't know how)
 
 - Run the script `run_example.sh` to check if shapemapper successfully 
   runs on a small subset of example data. (optional) 
-    - This should produce two folders: `example_data/shapemapper_out` 
-    and `example_data/shapemapper_temp`
+    - This should produce two folders: `shapemapper_out` 
+    and `shapemapper_temp`
 
 - To run all unit and end-to-end tests, run `internals/test/run_all_tests.sh`. 
   This should take about 5-15 minutes. (optional) 
@@ -166,13 +170,23 @@ shapemapper <parameters> <inputs> | --version | --help
              slow down execution, but can be useful for debugging. Default=False
 
 --nproc <n>  Number of processors to use for sequence alignment (corresponding
-             to Bowtie2's '-p' parameter and STAR's '--runThreadN' parameter). 
+             to bowtie2's '-p' parameter and STAR's '--runThreadN' parameter). 
              Default=4
 
 --max-paired-fragment-length <n>
              Maximum distance between aligned ends of non-overlapping mate pairs 
              to be merged into a single read (analogous to bowtie2 '--maxins').
              Default=800
+
+--max-search-depth <n>
+             Set bowtie2 '-D' parameter. If negative, shapemapper calls bowtie2 
+             with a default -D 15. Unused with --star-aligner.
+             Default=-1
+             
+--max-reseed <n>
+             Set bowtie2 '-R' parameter. If negative, shapemapper calls bowtie2
+             with a default -R 2. Unused with --star-aligner.
+             Default=-1
 
 --min-depth  <n>
              Minimum effective sequencing depth for including data (threshold must 
@@ -254,17 +268,13 @@ shapemapper <parameters> <inputs> | --version | --help
 
      --max-pages <n>
              Maximum pages to render for '--render-mutations'. Default=100
+             
+     --render-must-span <n>-<n>
+            Only render reads that cover a given nucleotide range. Disabled by default
 
 --per-read-histograms
              Output read length and per-read mutation frequency histogram tables in 
              log file.
-
---structured-output
-             Output all files in a folder hierarchy matching the pipeline organization.
-             If this option is provided, '--temp' folder will not be used.
-             Default behavior is to generate files and folders in a hierarchy in
-             the temp folder, except for important output files which are
-             generated in the main output folder.
 
 --serial     Run pipeline components one at a time and write all intermediate files
              to disk. Useful for debugging, but not generally recommended, as this will 
@@ -341,6 +351,10 @@ the release. These should be compatible with most 64-bit Linux platforms,
 even fairly old ones.
 
 In the rare case that a rebuild is necessary, see [Building](docs/building.md)
+
+### Modular workflow
+For guidance running components of ShapeMapper in isolation,
+see [Modular workflow](docs/modular_workflow.md)
 
 ### Version history
 see [Version history](docs/changelog.md)

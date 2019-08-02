@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Plot simple read coverage for each sample, broken down by amplicon
 primer pairs if present, and showing reads excluded for low mapping

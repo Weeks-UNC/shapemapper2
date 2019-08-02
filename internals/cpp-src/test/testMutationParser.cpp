@@ -14,22 +14,26 @@ using namespace mutation_parser::detail;
 using namespace util;
 
 std::string FILEPATH = __FILE__;
+std::string BASEPATH = "";
 
 BF::path getTestFileDir() {
-    BF::path PARENTPATH = BF::path(FILEPATH).parent_path();
-    BF::path FILEDIR = PARENTPATH / "files";
-    // create tmp folder any time this is requested to make sure it
-    // exists before any attempts to open files inside
-    BF::create_directory(FILEDIR / "tmp");
-    return FILEDIR;
+    BF::path filedir;
+    if (BASEPATH == "") {
+        // data file location if explicit path to main shapemapper directory
+        // not provided by test runner (assumes software location has not
+        // changed since compilation)
+        filedir = BF::path(FILEPATH).parent_path() / "files";
+    } else {
+        filedir = BF::path(BASEPATH) / "internals" / "cpp-src" / "test" / "files";
+        //std::cout << "Using BASEPATH " << BASEPATH << " passed by argument" << std::endl;
+    }
+    BF::create_directory(filedir / "tmp");
+    return filedir;
 }
 
 
-
-/*std::string getTestFilePath() {
-    return (getTestFileDir() / "2_bowtie_converted.bam").string();
-}*/
-
+// NOTE: for now, can't use debug_outname in tests, since ofstream mutation::debug_out
+// is shared across everything importing the mutation namespace
 
 void processMutations_wrapper(const std::string &line) {
 	Read r = parseTestRead(line);
@@ -1105,12 +1109,12 @@ M01228:25:000000000-A1CW0:1:1101:20482:3501	89	TPP	1	44	9S137M5S	=	1	0	GATCAGGAA
 M01228:25:000000000-A1CW0:1:1101:21880:3502	89	TPP	1	44	9S137M5S	=	1	0	GATCACAATGGCCTTCGGGCCAAGGACTCGGGGTGCCCTTCTCTGTGAAGGCTGAGAAAAACCCGTATCACCTGATCTGGATAATGCCAGCGTAGGGAAGTTCTCGATCCGGTTCGCCGGATCCAAATCGGGCTTCGGTCCGGTTCCACTC	:ECCCEECEC?2DD<DGGGEGGGGGGDDGGGGCEC8?EEGEEGGGGGGGGGCGGGGGGGGGGGHGGGGGGGGGGGGGGGGGGGGGGGEHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHIIIIIIIHHHHGGGGGGDDDDDDDDBB??????	AS:i:262	XN:i:0	XM:i:3	XO:i:0	XG:i:0	NM:i:3	MD:Z:33G0C15T86	YT:Z:UP
 )";
 	std::string test_dir = getTestFileDir().string();
-	std::ofstream dummy(test_dir+"/tmp/tmp.sam");
+	std::ofstream dummy(test_dir+"/tmp/tmp_vrcc.sam");
 	dummy << sample_reads;
 	dummy.close();
 	EXPECT_NO_THROW(
-		parseSAM(test_dir+"/tmp/tmp.sam",
-				 test_dir+"/tmp/tmp.mut",
+		parseSAM(test_dir+"/tmp/tmp_vrcc.sam",
+				 test_dir+"/tmp/tmp_vrcc.mut",
 				 "", // debug_outname
 				 "", // primers_filename
 				 800, // max_paired_fragment_length
@@ -1139,12 +1143,12 @@ TEST(Debug, R2Crash) {
 M01228:25:000000000-A1CW0:1:1101:12330:3450	163	TPP	1	44	4S58M1D49M	=	101	141	AGCTGGCCTTCGGGCCAAGGACTCGGGGTGCCCTTCTGCGCGAAGGCTGAGAAATACCCGTACACCTGATCTGGATAATGCCAGCGTAGGGAAGTTCTCGATCCGGTTCGC	????ABABDDDDDDDDGGFGGFHHIHHHCHHHHIIHIIGHHDHHHCHIIIHIIIIIIFHHHHHEHH=CDFFHHHHFFHHHHHHHHGEG5DDBEDB=.D=DCAA*;8BECEE	AS:i:204	XN:i:0	XM:i:1	XO:i:1	XG:i:1	NM:i:2	MD:Z:36T21^T49	YS:i:68	YT:Z:CP
 )";
 	std::string test_dir = getTestFileDir().string();
-	std::ofstream dummy(test_dir+"/tmp/tmp.sam");
+	std::ofstream dummy(test_dir+"/tmp/tmp_r2c.sam");
 	dummy << sample_reads;
 	dummy.close();
 	EXPECT_NO_THROW(
-		parseSAM(test_dir+"/tmp/tmp.sam",
-				 test_dir+"/tmp/tmp.mut",
+		parseSAM(test_dir+"/tmp/tmp_r2c.sam",
+				 test_dir+"/tmp/tmp_r2c.mut",
 				 "", // debug_outname
 				 "", // primers_filename
 				 800, // max_paired_fragment_length
@@ -1178,12 +1182,12 @@ M01228:25:000000000-A1CW0:1:1105:16437:4693	83	16S	203	44	146M5S	=	18	-331	GGACC
 M01228:25:000000000-A1CW0:1:1105:16437:4693	163	16S	18	44	63M2D84M	=	203	331	CATGGCTCAGATTGAACGCTGGCGGCAGGCCTAACACATGCAAGTCGAACGGTAACAGGAAGATTTGCTTCTTTGCTGACGAGTGGCGGACGGGTGAGTAATGTCTGGGAAACTGCCTGATGGAGGGGGATAACTACTGGAAACGGT	?????B?BBDDDDDDDFFEEEDHHHHHHHHHHHHHHHHHFHHHHHHHHHHHHDFHDFFHHHHFGGFFHHHHHHHDGHFHFE@CDFHHEEEEEEE1@;C,3?BBCBEEEEEEEEEEEECE?CEE:CADDD8?AECAAC:AEA?A*8A8	AS:i:283	XN:i:0	XM:i:1	XO:i:1	XG:i:2	NM:i:3	MD:Z:63^AG0C83	YS:i:292	YT:Z:CP
 )";
 	std::string test_dir = getTestFileDir().string();
-	std::ofstream dummy(test_dir+"/tmp.sam");
+	std::ofstream dummy(test_dir+"/tmp/tmp_oosps.sam");
 	dummy << sample_reads;
 	dummy.close();
 	EXPECT_NO_THROW(
-		parseSAM(test_dir+"/tmp/tmp.sam",
-				 test_dir+"/tmp/tmp.mut",
+		parseSAM(test_dir+"/tmp/tmp_oosps.sam",
+				 test_dir+"/tmp/tmp_oosps.mut",
 				 "", // debug_outname
 				 "", // primers_filename
 				 1500, // max_paired_fragment_length
@@ -1212,12 +1216,12 @@ TEST(Debug, RibosomeSegfault) {
 M01228:25:000000000-A1CW0:1:1101:10980:5999	83	16S	183	3	147M4S	=	75	-255	CGTCGCAAGACCAAAGAGGGGGACCCTCGGGCCTCTTGCCATCGGATTTGCCCAGATGGGATTAGCTTGTTGGTGGGGTAACGGCTCACCAAGGCGACGATCCCTAGCTGGTCTGAGAGGATGACCAGCCACACTGGAACTGAGACAAGAG	<GGGGEGECCEGGGGGGGGGGGGGGGGEGGDEGEDEEBDEGEEHHFHHHHHHHHHFDHHHHHGGDBHHE?HED>IIHHDHFCHGFIHHGEHHHC7IHHHHFHFHHFHHFHHFCIIIIHIIHFHF>HHHHGGGGGGDDDDDDDDBBB?????	MD:Z:25T21G19A2A19T56
 )";
 	std::string test_dir = getTestFileDir().string();
-	std::ofstream dummy(test_dir+"/tmp/tmp.sam");
+	std::ofstream dummy(test_dir+"/tmp/tmp_rs.sam");
 	dummy << sample_reads;
 	dummy.close();
 	EXPECT_NO_THROW(
-		parseSAM(test_dir+"/tmp/tmp.sam",
-				 test_dir+"/tmp/tmp.mut",
+		parseSAM(test_dir+"/tmp/tmp_rs.sam",
+				 test_dir+"/tmp/tmp_rs.mut",
 				 "", // debug_outname
 				 "", // primers_filename
 				 800, // max_paired_fragment_length
@@ -1246,12 +1250,12 @@ TEST(Debug, Segfault2) {
 	M01228:25:000000000-A1CW0:1:1101:17512:6032	147	16S	1469	255	21M10S	=	1323	-167	CTTTGTGATTCATGACTGGGGGTGAAGCGAC	=EBE8.EEECA8.>E@@@@@--@=====<<,	MD:Z:21
 )";
 	std::string test_dir = getTestFileDir().string();
-	std::ofstream dummy(test_dir+"/tmp/tmp.sam");
+	std::ofstream dummy(test_dir+"/tmp/tmp_s2.sam");
 	dummy << sample_reads;
 	dummy.close();
 	EXPECT_NO_THROW(
-		parseSAM(test_dir+"/tmp/tmp.sam",
-				 test_dir+"/tmp/tmp.mut",
+		parseSAM(test_dir+"/tmp/tmp_s2.sam",
+				 test_dir+"/tmp/tmp_s2.mut",
 				 "", // debug_outname
 				 "", // primers_filename
 				 800, // max_paired_fragment_length
@@ -1280,12 +1284,12 @@ TEST(Debug, MemoryCorruption) {
 M01228:25:000000000-A1CW0:1:2101:14804:1374	83	23S	697	1	129M1I13M4S	=	698	-141	GCAGGTTGAAGGTTGGGTAACACTAACTGGAGGACCGAACCGACTAATTTTGAAAAATTAGCGGATGACTTGTGGCTGGGGGTGAAAGGCCAATCAAACCGGGAGATAGCTGGTTCTCCCCGAAAGCTATTTTAGGTAGCGCCCATN	EEGGEEGGGGGEEGEGEEGGGGGGGGGGGGGGGGGGGC@GGGGGGGGGGGGGGGGGGGHHHHHHHHHHHHHHFHHHHHHIIIIHIIHIIIIIIIHHHHEHIIHGHHIIHIIIIIHHHHHHHIIIIGGGGGGDDDDDDDDBB???<5!	MD:Z:48G93
 )";
 	std::string test_dir = getTestFileDir().string();
-	std::ofstream dummy(test_dir+"/tmp/tmp.sam");
+	std::ofstream dummy(test_dir+"/tmp/tmp_mc.sam");
 	dummy << sample_reads;
 	dummy.close();
 	EXPECT_NO_THROW(
-		parseSAM(test_dir+"/tmp/tmp.sam",
-				 test_dir+"/tmp/tmp.mut",
+		parseSAM(test_dir+"/tmp/tmp_mc.sam",
+				 test_dir+"/tmp/tmp_mc.mut",
 				 "", // debug_outname
 				 "", // primers_filename
 				 800, // max_paired_fragment_length
@@ -1348,12 +1352,12 @@ M01228:25:000000000-A1CW0:1:1104:18521:26491	147	16S	1319	14	95M2D43M	=	1257	-20
 )";
 
 	std::string test_dir = getTestFileDir().string();
-	std::ofstream dummy(test_dir+"/tmp.sam");
+	std::ofstream dummy(test_dir+"/tmp/tmp_e.sam");
 	dummy << sample_reads;
 	dummy.close();
 	EXPECT_NO_THROW(
-		parseSAM(test_dir+"/tmp/tmp.sam",
-				 test_dir+"/tmp/tmp.mut",
+		parseSAM(test_dir+"/tmp/tmp_e.sam",
+				 test_dir+"/tmp/tmp_e.mut",
 				 "", // debug_outname
 				 "", // primers_filename
 				 800, // max_paired_fragment_length
@@ -2279,7 +2283,7 @@ TEST(Debug, PairedReadMemoryCorruption) {
 	std::string sample_reads = R"(M00236:570:000000000-BBRFH:1:1101:18209:3377:R1	99	RNA-B	1614	42	61S78M2D11M1I49M	=	1927	574	CCCAGTGTCTGTGTGTGGGAATTGGTATCTTGCACCCGTGGGAGTCGGGACATATAAATATCGACTTGGTTCTGTGTCTACTGTTAGAAGTTGAGTGGGAAGCTGCAGGCCCGCCAGGACCACTGGGTCCCTAGAGAGCAGGCCTGCGTGTTTCCCAAACAGCCGTTGCCCCCGTGGCCGAGGTAGGTAATCCATATTGG	CCCCCGGGGGGGGGGGGGGGGGGFGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGDGGG6EGFFFGGGGGGDCGF	AS:i:255	XS:i:106	XN:i:0	XM:i:2	XO:i:2	XG:i:3	NM:i:5	MD:Z:72C5^AA40T19	YS:i:385	YT:Z:CP
 M00236:570:000000000-BBRFH:1:1101:18209:3377:R2	147	RNA-B	1927	42	200M	=	1614	-574	CAAAGCGGAGGCCCGGGCTGCCCGCCGTCCCCCTTCAGCTCCCCACGGACTGTACCAGGCAGCTGGGCCCCGCAGGACAGGCCGCAGCGGGTGGCCGGCTCTGTCCCGTCTTGGGGTTCTTGGTGTCCACGTCTTGTGGGCCGTGGGCTTCTACCTGCCCTTGGCCTGCAGTGCTTTGCTGGAGAAGGGACTCCCTAGAC	A<?1:1???9>2>;??FFFB>>>95B>E>4DC6GFC;)?4EGD934CFGGFGF<CGFGGGGFFGGGGC6EGFGCEF9GEDGECGECGGGGGGEGF7GFFGGGGGGFEGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGFGGGGGGGGGGGGGGGGGGGGGCCCCC	AS:i:385	XN:i:0	XM:i:4	XO:i:0	XG:i:0	NM:i:4	MD:Z:37T60T97G1T1	YS:i:255	YT:Z:CP)";
 	std::string test_dir = getTestFileDir().string();
-	std::ofstream dummy(test_dir+"/tmp/tmp.sam");
+	std::ofstream dummy(test_dir+"/tmp/tmp_prmc.sam");
 	dummy << sample_reads;
 	dummy.close();
 
@@ -2296,8 +2300,8 @@ GTCTGGTGGTGGGTCGTAAG GACAGTCGCTCCGTGACAG
 	s.close();
 
 	EXPECT_NO_THROW(
-		parseSAM(test_dir+"/tmp/tmp.sam",
-				 test_dir+"/tmp/tmp.mut",
+		parseSAM(test_dir+"/tmp/tmp_prmc.sam",
+				 test_dir+"/tmp/tmp_prmc.mut",
 				 "", // debug_outname
 				 tmp_filename, // primers_filename
 				 800, // max_paired_fragment_length
@@ -2342,14 +2346,14 @@ CTGCACACCTACTAGTCACCA AGCCCCACAGAACTATTGTAAA
 	std::string sample_reads = R"(M00236:570:000000000-BBRFH:1:1102:20009:1455	153	RNA-C	360	36	24M2S	=	360	0	GAGGAAATTGCTTTGTATTGTACAGG	EFEFECE<<C,,9CF<E99F9C<CAA	AS:i:44	XN:i:0	XM:i:1	XO:i:0	XG:i:0	NM:i:1	MD:Z:22T1	YT:Z:UP
 )";
 	std::string test_dir = getTestFileDir().string();
-	std::ofstream dummy(test_dir+"/tmp/tmp.sam");
+	std::ofstream dummy(test_dir+"/tmp/tmp_s3.sam");
 	dummy << sample_reads;
 	dummy.close();
 
 	EXPECT_NO_THROW(
-		parseSAM(test_dir+"/tmp/tmp.sam",
-				 test_dir+"/tmp/tmp.mut",
-				 test_dir+"/tmp/tmp_debug_out.txt", // debug_outname
+		parseSAM(test_dir+"/tmp/tmp_s3.sam",
+				 test_dir+"/tmp/tmp_s3.mut",
+				 "", // debug_outname
 				 tmp_filename, // primers_filename
 				 800, // max_paired_fragment_length
 				 10, // min_mapq
@@ -2369,6 +2373,51 @@ CTGCACACCTACTAGTCACCA AGCCCCACAGAACTATTGTAAA
 				 true //warn_on_no_mapped
 		);
 	);
+}
+
+
+TEST(Debug, VectorOutOfRange) {
+	std::string sample_reads = R"(K00270:121:HWNJGBBXX:6:1114:26666:6484	163	chr11:65505800-65505900	1	42	106S40M	=	65505813	265	GTTCAAGAACTGTAATGCTGGGTGGGAACATGTAACTTGTAGACTGGAGAAGTATTAAAACCACAGCTAAGTAGCTCTATTATAATACTTATCCAGAGACTAAAACAAACTTAAACCAGTCAGTGGAGAAATAACATGTTCAAGAA	A<-AAJFJF<AJFJF-AFJFFJ<AJ<FJJ-F-FAA--FFJJJF<JJ77-FAAAF<-7-<FF--77F-FFJ7--<--7A-AAA-7-77-77---7A<-AAJJ7FFFA--7----7----F-)----7AJ-----7--7--7-7---7	AS:i:186	XS:i:104	XN:i:0	XM:i:11	XO:i:1	XG:i:1	NM:i:12	MD:Z:C13A25	YS:i:294	YT:Z:CP
+K00270:121:HWNJGBBXX:6:1106:2767:34565	147	chr11:65505800-65505900	1	44	77S73M	=	65505485	-388	CCTGCAAATTGTTAACAGAAGGGTATTAAAACCACAGCTAAGTAGCTCTATTATAATACTTATCCAGTGACTAAAACCAACTTAAACCAGTAAGTGGAGAAATAACATGTTCAAGAACTGTAATGCTGGGTGGGAACATGTAACTTGTAG	AJFJF<<<JJJJJJAJJJ<JFAJJJJFAFA7JJFJFJJA-AJJJFFJJJFJJ<F7-JFFJJ-AAFJJJJJJJF-AAJFJJJJJJJJJJFJFJAJJJFFJJJ-JJAJFJJJJJFFJFAJJJJFFJJJJJJJJJJFJFAJJJJJJJJFFFAA	AS:i:300	XN:i:0	XM:i:0	XO:i:0	XG:i:0	NM:i:0	MD:Z:73	YS:i:300	YT:Z:CP)";
+
+	std::string test_dir = getTestFileDir().string();
+	std::ofstream dummy(test_dir+"/tmp/tmp_voor.sam");
+	dummy << sample_reads;
+	dummy.close();
+
+	//EXPECT_NO_THROW(
+		parseSAM(test_dir+"/tmp/tmp_voor.sam",
+				 test_dir+"/tmp/tmp_voor.mut",
+				 "", // debug_outname
+				 "", // primers_filename
+				 800, // max_paired_fragment_length
+				 10, // min_mapq
+				 false, // right_align_ambig_dels,
+				 false, //right_align_ambig_ins,
+				 5, // max_internal_match,
+				 30, //min_qual,
+				 0, // exclude_3prime,
+				 "", //mutation_type,
+				 false, // variant_mode,
+				 true, // trim_primers
+				 true, // require_forward_primer_mapped
+				 true, // require_reverse_primer_mapped
+				 10, // max_primer_offset
+				 true, // input_is_unpaired
+				 true, // debug,
+				 true //warn_on_no_mapped
+		);
+	//);
+}
+
+
+int main(int argc, char **argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  // set location of top-level shapemapper path so we can locate data files
+  if (argc > 1){
+      BASEPATH = argv[1];
+  }
+  return RUN_ALL_TESTS();
 }
 
 // FIXME: seems like debug_out is shared/interacting across tests run in parallel. 

@@ -10,17 +10,13 @@ THIS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 BASE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd ../.. && pwd )"
 
 
-source ${BASE_DIR}/internals/install/dep_paths.sh
+source ${BASE_DIR}/internals/paths/dep_paths.sh
 
-minimal=0 
-activedev=0
+sourceonly=0
 while :; do
 case $1 in
-    --minimal)
-        minimal=1
-        ;;
-    --include-active-dev)
-        activedev=1
+    --source-only)
+        sourceonly=1
         ;;
     -?*)
         printf 'ERROR: Unknown argument: %s\n' "$1" >&2
@@ -43,6 +39,7 @@ VERSION="$(<${BASE_DIR}/internals/release/version.txt)"
 EXCLUDES="${DIRNAME}/.git \
 ${DIRNAME}/*.idea \
 ${DIRNAME}/internals/build_deps \
+${DIRNAME}/build \
 ${DIRNAME}/internals/build \
 ${DIRNAME}/internals/release/*.tar.gz \
 ${DIRNAME}/internals/thirdparty/*.tar.gz \
@@ -50,20 +47,23 @@ ${DIRNAME}/internals/thirdparty/*.zip \
 ${DIRNAME}/internals/thirdparty/curl-src \
 ${DIRNAME}/internals/thirdparty/pv* \
 ${DIRNAME}/internals/build_thirdparty.log \
+${DIRNAME}/internals/python/run_debug.py \
 ${DIRNAME}/internals/*temp \
 ${DIRNAME}/internals/*tmp \
 ${DIRNAME}/internals/*results \
 ${DIRNAME}/*out"
 
-if [ $activedev == 1 ]; then
-    VERSION+="-active-dev"
-else
-    EXCLUDES+=" ${DIRNAME}/internals/bin/single_molecule"
-fi
 
-if [ $minimal == 1 ]; then
-    EXCLUDES+=" ${DIRNAME}/thirdparty"
-    VERSION+="-minimal"
+if [ $sourceonly == 1 ]; then
+    VERSION+="-source-only"
+    EXCLUDES+=" ${DIRNAME}/internals/thirdparty \
+${DIRNAME}/internals/bin/shapemapper_read_trimmer \
+${DIRNAME}/internals/bin/shapemapper_mutation_counter \
+${DIRNAME}/internals/bin/shapemapper_mutation_parser \
+${DIRNAME}/internals/bin/test_histogram \
+${DIRNAME}/internals/bin/test_mutation_counter \
+${DIRNAME}/internals/bin/test_mutation_parser \
+${DIRNAME}/internals/bin/test_read_trimmer"
 fi
 
 tarball_name="shapemapper-${VERSION}.tar.gz"

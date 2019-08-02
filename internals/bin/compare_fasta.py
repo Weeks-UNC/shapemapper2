@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Check if two fasta files have identical sequences
 

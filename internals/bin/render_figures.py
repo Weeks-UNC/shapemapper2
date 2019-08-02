@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Given:
  summary tab delimited file
@@ -718,8 +719,8 @@ def draw_percentile(ax, vals, percent, col, x1=0, x2=0, y=0, percentage=False, n
         txt = commify("%i" % med)
     if percentage:
         txt = txt + "%"
-    ax.text(x1, y, name, transform=ax.transAxes, fontsize=10, horizontalalignment="left")
-    ax.text(x2, y, txt, transform=ax.transAxes, fontsize=10, horizontalalignment="right")
+    ax.text(x1, y, name, transform=ax.transAxes, fontsize=10, horizontalalignment="left", clip_on=False)
+    ax.text(x2, y, txt, transform=ax.transAxes, fontsize=10, horizontalalignment="right", clip_on=False)
 
 
 def write_histograms(shape, stderr,
@@ -744,10 +745,13 @@ def write_histograms(shape, stderr,
             ui[i] = True
     if rx_rate is not None:
         rx_rate = np.array(rx_rate)[ui]
+        rx_depth = np.array(rx_depth)[ui]
     if bg_rate is not None:
         bg_rate = np.array(bg_rate)[ui]
+        bg_depth = np.array(bg_depth)[ui]
     if dc_rate is not None:
         dc_rate = np.array(dc_rate)[ui]
+        dc_depth = np.array(dc_depth)[ui]
 
     tlabel_size = 10
 
@@ -759,9 +763,14 @@ def write_histograms(shape, stderr,
     if dc_rate is not None:
         legend_labels.append("Denatured")
 
-    fig, (ax1,ax2,ax3) = plt.subplots(nrows=1, ncols=3)
+    fig, axes = plt.subplots(nrows=2, ncols=3)
+    ax1, ax2, ax3 = axes[0,:]
+    ax4 = axes[1,2]
     fig.set_size_inches(10,6)
-    fig.subplots_adjust(bottom=0.6, top=0.85, wspace=0.5, left=0.08, right=0.95)
+    fig.subplots_adjust(bottom=0.1, top=0.85, wspace=0.5, hspace=0.75, left=0.08, right=0.95)
+
+    for ax in axes[1,0:2]:
+        ax.set_visible(False)
 
     if len(name)<20:
         title = plt.suptitle(name,fontsize=18,horizontalalignment="left", x=0.02)
@@ -860,18 +869,38 @@ def write_histograms(shape, stderr,
     ax1.set_xticklabels(["%d"%val if val==int(val) else "%s"%val for val in ticks])
 
     if "Modified" in legend_labels and len(rx_rate)>10:
-        draw_percentile(ax1, rx_rate, 95.0, "black", x1=0, x2=1, y=-1, percentage=True, name="Modified sample:\n 95th percentile rate:")
-        draw_percentile(ax1, rx_rate, 5.0, "black", x1=0, x2=1, y=-1.1, percentage=True, name=" Median rate:")
+        draw_percentile(ax1, rx_rate, 95.0, "black", x1=-0.2, x2=1, y=-1, percentage=True, name="Modified sample:\n 95th percentile rate:")
+        draw_percentile(ax1, rx_rate, 50.0, "black", x1=-0.2, x2=1, y=-1.1, percentage=True, name=" Median rate:")
 
     if "Untreated" in legend_labels and len(bg_rate)>10:
-        draw_percentile(ax1, bg_rate, 95.0, "black", x1=0, x2=1, y=-1.4, percentage=True, name="Untreated sample:\n 95th percentile rate:")
-        draw_percentile(ax1, bg_rate, 5.0, "black", x1=0, x2=1, y=-1.5, percentage=True, name=" Median rate:")
+        draw_percentile(ax1, bg_rate, 95.0, "black", x1=-0.2, x2=1, y=-1.4, percentage=True, name="Untreated sample:\n 95th percentile rate:")
+        draw_percentile(ax1, bg_rate, 50.0, "black", x1=-0.2, x2=1, y=-1.5, percentage=True, name=" Median rate:")
 
     if "Denatured" in legend_labels and len(dc_rate)>10:
-        draw_percentile(ax1, dc_rate, 95.0, "black", x1=0, x2=1, y=-1.8, percentage=True, name="Denatured sample:\n 95th percentile rate:")
-        draw_percentile(ax1, dc_rate, 5.0, "black", x1=0, x2=1, y=-1.9, percentage=True, name=" Median rate:")
+        draw_percentile(ax1, dc_rate, 95.0, "black", x1=-0.2, x2=1, y=-1.8, percentage=True, name="Denatured sample:\n 95th percentile rate:")
+        draw_percentile(ax1, dc_rate, 50.0, "black", x1=-0.2, x2=1, y=-1.9, percentage=True, name=" Median rate:")
 
-    # TODO: also generate percentile stats on the modified-untreated diff
+    # Plot ln(RXrate/BGrate) histogram in lower right panel
+    if "Modified" in legend_labels and "Untreated" in legend_labels:
+        vals = np.log(rx_rate/bg_rate)
+        vals = vals[np.isfinite(vals)]
+        # typical experiments range between -1 and 7
+        pdf, bins, patches = ax4.hist(vals, bins=num_bins, range=(-1,7), histtype='step', lw=1.5,
+                                      color='black')
+        max_y = max([x[1] for x in patches[0].get_xy()])
+        # rescale stepplot to max out at 1
+        patches[0].set_xy([[c[0],c[1]/max_y] for c in patches[0].get_xy()])
+        ax4.set_xlabel("ln(modified rate / untreated rate)", fontsize=13)
+        ax4.set_ylabel("Normalized\nnucleotide count", fontsize=13)
+        ax4.set_title("Raw background-corrected\nrate distribution", x=0.5, y=1.04)
+        ax4.spines["right"].set_visible(False)
+        ax4.spines["top"].set_visible(False)
+        ax4.tick_params(axis='both', labelsize=tlabel_size)
+        ax4.get_xaxis().tick_bottom()
+        ax4.get_yaxis().tick_left()
+        ax4.set_ylim([0, 1])
+        ax4.set_xticks(list(range(-1,8)))
+
 
     ax2.set_title("Read depths", x=0.5,y=1.08)
     ax2.set_ylabel("Normalized\nnucleotide count",fontsize=13)
@@ -924,7 +953,6 @@ def write_histograms(shape, stderr,
 
     ax2.get_xaxis().tick_bottom()   # remove unneeded ticks
     ax2.get_yaxis().tick_left()
-
     ax2.tick_params(axis='both', labelsize=tlabel_size)
 
     xticks = [int(x) for x in ax2.get_xticks()]

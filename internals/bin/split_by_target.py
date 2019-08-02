@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Split a SAM file into multiple files by mapped target.
 

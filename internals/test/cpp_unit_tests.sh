@@ -20,7 +20,7 @@ done
 BASE_DIR="$( cd -P "$( dirname "$SOURCE" )" && cd ../.. && pwd )"
 
 
-export PATH=${BASE_DIR}/internals/bin:${BASE_DIR}:${PATH}
+source ${BASE_DIR}/internals/paths/bin_paths.sh
 
 # disable core dumps
 ulimit -c 0
@@ -33,13 +33,13 @@ if [[ $? != 0 ]]; then
     exit $?
 fi
 
-test_mutation_parser
+test_mutation_parser "${BASE_DIR}"
 if [[ $? != 0 ]]; then
     echo -e "${err}"
     exit $?
 fi
 
-test_mutation_counter
+test_mutation_counter "${BASE_DIR}"
 if [[ $? != 0 ]]; then
     echo -e "${err}"
     exit $?

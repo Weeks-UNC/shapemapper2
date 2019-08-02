@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Render individual sequencing reads and mutations in their aligned
 context, mostly for debugging purposes.
@@ -12,6 +13,7 @@ import os
 import sys
 import string
 import operator
+from argparse import ArgumentParser as AP
 
 # "[read]"
 # optional tag or string indicating type of read (UNPAIRED, UNPAIRED_R1, UNPAIRED_R2, PAIRED_R1, PAIRED_R2, MERGED)
@@ -32,14 +34,14 @@ import operator
 # concordant R1 and R2 are processed in pairs, and rendered
 # so right-most read is offset to line up with left-most read reference
 
-# FIXME: add a legend at the beginning
+# FIXME: add a more complete legend at the beginning
 
 show_bounding_box = False
 use_full_qual_gradient = False
 only_pairs = False
 
 # FIXME: make a param class
-def init_globals(maxins=800):
+def init_globals(maxins=800, mustspan=None):
     global page_index
     global primers
     global char_height
@@ -55,6 +57,7 @@ def init_globals(maxins=800):
     global vert_char_count
     global row_height
     global rows_per_page
+    global must_span
 
     page_index = 0
     primers = []
@@ -79,6 +82,10 @@ def init_globals(maxins=800):
     # adjust rows_per_page to maintain roughly A4 aspect ratio
     rows_per_page = max_height/(vert_char_count*char_height)
 
+    if mustspan is not None:
+        mustspan = list(map(int, mustspan.replace(',',' ').replace('-',' ').split()))
+        assert len(mustspan) == 2
+    must_span = mustspan
 
 
 block_count = 0
@@ -308,15 +315,15 @@ if use_full_qual_gradient:
         'hot', 'afmhot', 'gist_heat', 'copper',
     ]
     if use_seaborn_palette:
-        # note: seaborn not currently installed in thirdparty conda packages 
+        # note: seaborn not currently installed in thirdparty conda packages
         from seaborn import cubehelix_palette as cubehelix
         cmap = cubehelix_palette(n_colors=int(round(hi_qual-lo_qual+1)),
                                  start=0,
                                  rot=1.0,
-                                 hue=0.8, 
+                                 hue=0.8,
                                  light=0.9,
-                                 dark=0.1, 
-                                 reverse = True, 
+                                 dark=0.1,
+                                 reverse = True,
                                  as_cmap=True)
     else:
         cmap = plt.get_cmap(gradient_name)
@@ -678,7 +685,7 @@ def header():
                    rot rotate
                    data show
                    rot neg rotate
-                    
+
                 }} def
 
                 /triup {{
@@ -782,8 +789,8 @@ def parse_debug_file(f):
 def group_objs(f):
     group = []
     for obj in parse_debug_file(f):
-        if (isinstance(obj, Read) and 
-            (obj.read_type == "PAIRED_R1" or 
+        if (isinstance(obj, Read) and
+            (obj.read_type == "PAIRED_R1" or
              obj.read_type == "PAIRED_R2")):
             if len(group) > 0:
                 if isinstance(group[0], Read):
@@ -821,7 +828,7 @@ def classify_objs(f):
         yield block
 
 
-def filter_blocks(f, only_pairs=False):
+def filter_pairs(f, only_pairs=False):
     for block in classify_objs(f):
         #print('-#-'.join([row.row_type for row in block]))
         s = []
@@ -846,10 +853,34 @@ def filter_blocks(f, only_pairs=False):
             yield block
 
 
+def filter_span(f):
+    global must_span
+
+    for block in f:
+        if must_span is None:
+            yield block
+        else:
+            span = False
+            for row in block:
+                if row.row_type == "Read":
+                    if (row.data.left <= must_span[0]) and (row.data.right >= must_span[1]):
+                        span = True
+                elif row.row_type == "ReadPair":
+                    if ((min(row.data[0].left,row.data[1].left) <= must_span[0]) and
+                        (max(row.data[0].right,row.data[1].right) >= must_span[1])):
+                        span = True
+                if span:
+                    break
+            if span:
+                yield block
+            else:
+                continue
+
+
 def render_rows(f):
     global block_count
     block_count = 0
-    for block in filter_blocks(f, only_pairs=only_pairs):
+    for block in filter_span(filter_pairs(f, only_pairs=only_pairs)):
         block_count += 1
         for row in block:
             yield row.render()
@@ -858,7 +889,7 @@ def render_rows(f):
 def legend():
     global page_index
     s = ""
-    
+
     s += save_state()
     s += translate((starting_left, page_height*0.85))
     #quals = [chr(q+33) for q in list(range(0,41))]
@@ -911,16 +942,18 @@ def main():
     global max_pages
     global page_index
 
-    from argparse import ArgumentParser as AP
     ap = AP()
     ap.add_argument("--max-length", type=int, default=500)
     ap.add_argument("--input", type=str, required=True)
     ap.add_argument("--output", type=str, required=True)
     ap.add_argument("--primers", type=str, required=False, default="")
     ap.add_argument("--max-pages", type=int, default=100)
+    ap.add_argument("--must-span", type=str, default=None)
+    # FIXME: span argument probably isn't convenient for runs with multiple RNA targets
     p = ap.parse_args()
 
-    init_globals(maxins=p.max_length)
+    init_globals(maxins=p.max_length,
+                 mustspan=p.must_span)
     max_pages = p.max_pages
     primers = load_primers(p.primers)
     input_file = open(p.input, 'rU')
@@ -976,10 +1009,5 @@ GTCTGGTGGTGGGTCGTAAG GACAGTCGCTCCGTGACAG
         print(p)
 else:
     # run normally
-    if len(sys.argv) < 4:
-        # FIXME: add some actual arg parsing
-        print("Usage: python3 render_mutations_ps.py <maxinsert> <debug_input.txt> <output.ps>")
-        sys.exit()
-
     main()
     #os.system('gnome-open {1} && gedit {1}'.format(sys.argv[2]))

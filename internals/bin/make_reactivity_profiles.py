@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Given:
  fasta file containing 1 sequence

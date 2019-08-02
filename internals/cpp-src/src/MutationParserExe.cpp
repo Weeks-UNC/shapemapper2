@@ -103,7 +103,7 @@ int main(int argc, char *argv[]) {
              "use only mutations from a specific mutation class (not recommended). Possible values: mismatch gap insert gap_multi insert_multi complex")
 
             ("variant_mode,v",  po::bool_switch(&variant_mode)->default_value(false),
-            "FIXME: add description")
+            "If true, nearby mutation merging and ambiguous mutation realignment steps will not be performed. Used by shapemapper to simplify sequence variant detection, i.e. SNP calling.")
 
             ("debug", po::bool_switch(&debug)->default_value(false),
             "print debugging information")

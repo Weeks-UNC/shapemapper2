@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Inputs:
  - fasta file containing 1 sequence

@@ -14,13 +14,14 @@ Frequently asked questions
 - [How do I model RNA secondary structures?](#how-do-i-model)
 - [How do I render SHAPE reactivity-colored secondary structures?](#how-do-i-render)
 - [Can I run ShapeMapper on multiple RNAs at the same time?](#multiple-rnas)
+- [Can I run ShapeMapper on an existing alignment?](#existing-alignment)
 - [What should I do if I am studying an RNA transcribed from multiple loci with slightly different sequences?](#multiple-loci)
 - [Can I run ShapeMapper using reads from PacBio or other long-read sequencing platforms?](#long-reads)
 - [How should I cite ShapeMapper?](#citation)
 
 ---
 
-<h4 name="warning"> </h4>
+<a name="warning"></a>
 
 ### Why am I getting a warning about possible low-quality reactivity profiles?
 The run has failed to meet one or more run quality checks.
@@ -30,7 +31,7 @@ for explanations and possible solutions.
 
 ---
 
-<h4 name="trimming"> </h4>
+<a name="trimming"></a> 
 
 ### How should I handle primer trimming?
 
@@ -63,30 +64,49 @@ see [Primer trimming](analysis_steps.md#primer-trimming-and-enforcement-of-read-
 
 ---
 
-<h4 name="how-do-i-model"> </h4>
+<a name="how-do-i-model"></a>
 
 ### How do I model RNA secondary structures?
 see [Other software](other_software.md#rna-secondary-structure-modeling)
 
 ---
 
-<h4 name="how-do-i-render"> </h4>
+<a name="how-do-i-render"></a>
 
 ### How do I render SHAPE reactivity-colored secondary structures?
 see [Other software](other_software.md#traditional-secondary-structure-diagrams)
 
 ---
 
-<h4 name="multiple-rnas"> </h4>
+<a name="multiple-rnas"></a>
 
 ### Can I run ShapeMapper on multiple RNAs at the same time?
 Yes. The <kbd>--target</kbd> parameter will accept multiple 
 FASTA files, or multiple sequences can be included within
 a single FASTA file.
 
+However, inputting large numbers of sequences (such as those 
+from whole-transcriptome studies) will cause ShapeMapper to 
+run out of memory or crash. The [shapemapper-txome](https://github.com/Weeks-UNC/shapemapper-txome)
+wrapper can be a useful workaround in this case, or see
+[Modular workflow](modular_workflow.md) for help running alignment parsing,
+mutation counting, and reactivity profile calculation steps
+in isolation.
+
 ---
 
-<h4 name="multiple-loci"> </h4>
+<a name="existing-alignment"></a>
+
+### Can I run ShapeMapper on an existing alignment?
+
+The standard shapemapper executable does not currently accept 
+alignment files as input. However, individual shapemapper modules can be run
+"manually" to process alignments in SAM format 
+(see [Modular workflow](modular_workflow.md) for guidance).
+
+---
+
+<a name="multiple-loci"></a>
 
 ### What should I do if I am studying an RNA transcribed from multiple loci with slightly different sequences?
 The presence of a subpopulation of sequence variants or transcribed pseudogenes 
@@ -113,16 +133,23 @@ of contaminating transcripts. By default, the page size is scaled to include rea
 up to 800 nucleotides long. This is often too zoomed out for convenient visualization,
 so the <kbd>--max-paired-fragment-length</kbd> parameter may need to be lowered.
 
+Warning: running ShapeMapper with more than 15 highly similar target sequences 
+can exhaust bowtie2's search limits and result in mis-mapping across sequences. 
+In this case, we recommend increasing the aligner's effort options
+with <kbd>--max-search-depth</kbd> and perhaps <kbd>--max-reseed</kbd>, corresponding 
+to bowtie2's -D and -R options. See
+[bowtie2 documentation](http://bowtie-bio.sourceforge.net/bowtie2/manual.shtml#effort-options).
+
 ---
 
-<h4 name="long-reads"> </h4>
+<a name="long-reads"></a>
 
 ### Can I run ShapeMapper using reads from PacBio or other long-read sequencing platforms?
-Not currently (see [Read length](analysis_steps.md#read-length)).
+This is currently unsupported (see [Read length](analysis_steps.md#read-length)).
 
 ---
 
-<h4 name="citation"> </h4>
+<a name="citation"></a>
 
 ### How should I cite ShapeMapper?
 #### For ShapeMapper2 software, please cite: 

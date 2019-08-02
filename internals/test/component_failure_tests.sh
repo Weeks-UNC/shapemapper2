@@ -19,9 +19,7 @@ done
 BASE_DIR="$( cd -P "$( dirname "$SOURCE" )" && cd ../.. && pwd )"
 
 
-export PATH=${BASE_DIR}:${PATH}
-
-source ${BASE_DIR}/internals/install/bin_paths.sh
+source ${BASE_DIR}/internals/paths/bin_paths.sh
 
 #cd ${BASE_DIR}/example_data
 cd ${BASE_DIR}/internals/test/data

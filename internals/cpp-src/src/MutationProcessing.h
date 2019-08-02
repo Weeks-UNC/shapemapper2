@@ -283,16 +283,6 @@ namespace mutation {
                 if (m.tag == "N_match") {
                     unmerged_mutations.push_back(m);
                 } else if (collapsed_mutations.size() > 0 and
-                           collapsed_mutations.back().right - 1 == m.left) {
-                    // adjacent mutation
-                    collapsed_mutations.back().right = m.right;
-                    collapsed_mutations.back().seq += m.seq;
-                    collapsed_mutations.back().qual += m.qual;
-                    collapsed_mutations.back().tag = "";
-                    if (m.ambig) {
-                        collapsed_mutations.back().ambig = true;
-                    }
-                } else if (collapsed_mutations.size() > 0 and
                            m.left - (collapsed_mutations.back().right - 1) <= max_internal_match) {
                     // mutation within allowed distance for adjacency
                     std::string seq_sub = local_target_seq.substr(collapsed_mutations.back().right - left_target_pos,

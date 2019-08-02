@@ -14,7 +14,7 @@ Analysis steps
 - [Paired read merging](#paired-read-merging)
 - [Alignment to reference sequences](#alignment-to-reference-sequences)
 - [Primer trimming and enforcement of read location requirements](#primer-trimming-and-enforcement-of-read-location-requirements)
-- [Ambiguously aligned mutation handling](#ambiguously-aligned-mutatiomax-pagesn-handling)
+- [Ambiguously aligned mutation handling](#ambiguously-aligned-mutation-handling)
 - [Multinucleotide mutation handling](#multinucleotide-mutation-handling)
 - [Post-alignment basecall quality filtering](#post-alignment-basecall-quality-filtering)
 - [Chemical adduct location inference](#chemical-adduct-location-inference)
@@ -200,6 +200,11 @@ of these parameters are _not_ adjustable by the ShapeMapper user.
 <kbd>--rdg 5,1 --rfg 5,1</kbd> &emsp; Reduce penalty for gap extension, since multinucleotide deletions are often a large part of MaP signal.
 
 <kbd>--dpad 30</kbd> &emsp; Allow somewhat larger deletions than bowtie2 default.</details>
+
+If <kbd>--max-reseed</kbd> and/or <kbd>--max-search-depth</kbd> is provided, explicit params 
+"-D <max_search_depth> -R <max_reseed> -N 0 -L <seed_len> -i S,1,0.75" are used instead of 
+<kbd>--sensitive</kbd> or <kbd>--sensitive-local</kbd>, where
+seed_len is 20 by default, or 22 if <kbd>--disable-soft-clipping</kbd> is provided.
 
 <h4><i>Other notes:</i></h4>
 

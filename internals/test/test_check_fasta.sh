@@ -16,8 +16,7 @@ while [ -h "$SOURCE" ]; do
 done
 BASE_DIR="$( cd -P "$( dirname "$SOURCE" )" && cd ../.. && pwd )"
 
-
-export PATH=${BASE_DIR}/internals/bin:${PATH}
+source ${BASE_DIR}/internals/paths/bin_paths.sh
 
 for f in fasta_check_test_data/*.fa; do
     o=$f.corrected

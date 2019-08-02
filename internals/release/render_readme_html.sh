@@ -11,6 +11,12 @@ replace_links () {
     sed -i 's/\.md/\.html/g' "$1"
 }
 
+fix_anchors () {
+    # remove user-content- prefixes in anchors. not sure why they're added - they break links
+    sed -i 's/<a name="user-content-/<a name="/g' "$1"
+}
+
+
 test_replace () {
     echo '<>>>,:{}>>>heyHeyHey<a href="docs/analysis_steps.md#quality-control-checks">>' > tmp
     expected='<>>>,:{}>>>heyHeyHey<a href="docs/analysis_steps.html#quality-control-checks">>'
@@ -25,10 +31,27 @@ test_replace () {
     rm tmp
 }
 
+test_fix_anchors() {
+    echo '<p><a name="user-content-warning"></a></p>' > tmp
+    expected='<p><a name="warning"></a></p>'
+
+    fix_anchors tmp
+    actual=$(cat tmp)
+    if [ "$expected" != "$actual" ]; then
+        echo "$expected"
+        echo "$actual"
+        echo "fix_anchors() FAILED"
+        rm tmp
+        exit 1
+    fi
+    rm tmp
+}
+
 
 reformat_main () {
     replace_links "$1"
-    
+    fix_anchors "$1"
+
     # remove border elements
     sed -i "s/README.md - Grip/ShapeMapper ${VERSION} README/g" "$1"
     sed -i 's/border:\([0-9]*\)px solid #ddd/border:\1px solid #FF0000/g' "$1"
@@ -49,6 +72,7 @@ reformat_main () {
 
 reformat () {
     replace_links "$1"
+    fix_anchors "$1"
 
     # remove border elements
     sed -i 's/border:\([0-9]*\)px solid #ddd/border:\1px solid #FF0000/g' "$1"

@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Given a tab-delimited reactivity summary file
 output a .map file, .shape file, or simplified

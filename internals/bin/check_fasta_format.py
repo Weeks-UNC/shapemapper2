@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # --------------------------------------------------------------------- #
 #  This file is a part of ShapeMapper, and is licensed under the terms  #
 #  of the MIT license. Copyright 2018 Steven Busan.                     #

@@ -96,12 +96,6 @@ class Interleaver(Component):
         self.add(StderrNode())
 
     def cmd(self):
-        # TODO: move this shell code to separate script and ensure exits with error on error
-        # FIXME: this could be the source of intermittent crashes on killdevil
-        #cmd = "paste <(paste - - - - < {R1}) "
-        #cmd += "<(paste - - - - < {R2}) "
-        #cmd += "| tr '\\t' '\\n' "
-        #cmd += "> {interleaved}"
         cmd = [pyexe,
                os.path.join(bin_dir, "interleave_fastq.py"),
                "{R1}", "{R2}", "{interleaved}"]
@@ -320,13 +314,26 @@ class BowtieAligner(Component):
                  disable_soft_clipping=False,
                  nproc=None,
                  maxins=None,
+                 max_search_depth=None,
+                 max_reseed=None,
                  **kwargs):
         self.reorder = reorder
         self.nproc = nproc
         self.disable_soft_clipping = disable_soft_clipping
         self.maxins = 800
+
         if maxins is not None:
             self.maxins = maxins
+        self.max_search_depth = max_search_depth
+        self.max_reseed = max_reseed
+        if self.max_search_depth < 0:
+            self.max_search_depth = None
+        if self.max_reseed < 0:
+            self.max_reseed = None
+        if max_reseed is None and max_search_depth is not None:
+            max_reseed = 2 # bowtie2 -R
+        if max_search_depth is None and max_reseed is not None:
+            max_search_depth = 15 # bowtie2 -D
         super().__init__(**kwargs)
         self.add(InputNode(name="index",
                            parallel=False))
@@ -343,10 +350,21 @@ class BowtieAligner(Component):
         cmd = ["bowtie2_wrapper.sh"]
         #cmd = ["bowtie2"]
         cmd += ["-p", str(self.nproc)]
+
         if not self.disable_soft_clipping:
-            cmd += ["--local", "--sensitive-local"]
+            cmd += ["--local"]
+            if self.max_search_depth is None:
+                cmd += ["--sensitive-local"]
+                # corresponds to -D 15 -R 2 -N 0 -L 20 -i S,1,0.75
+            else:
+                cmd += ["-D", str(self.max_search_depth), "-R", str(self.max_reseed), "-N", "0", "-L", "20", "-i", "S,1,0.75"]
         else:
-            cmd += ["--end-to-end", "--sensitive"]
+            cmd += ["--end-to-end"]
+            if self.max_search_depth is None:
+                cmd += ["--sensitive"]
+                # corresponds to -D 15 -R 2 -N 0 -L 22 -i S,1,1.15
+            else:
+                cmd += ["-D", str(self.max_search_depth), "-R", str(self.max_reseed), "-N", "0", "-L", "22", "-i", "S,1,0.75"]
         cmd += [
                "--mp", "3,1", # try to be slightly more consistent with STAR's alignment parameters
                "--rdg", "5,1", # multinuc deletions are a large part of the signal, so don't penalize
@@ -587,13 +605,17 @@ class BowtieAlignerMixedInput(Component):
                  disable_soft_clipping=False,
                  nproc=None,
                  maxins=None,
+                 max_search_depth=None,
+                 max_reseed=None,
                  **kwargs):
         super().__init__(**kwargs)
         tab6interleaver = Tab6Interleaver()
         aligner_kwargs = dict(reorder=reorder,
                               disable_soft_clipping=disable_soft_clipping,
                               nproc=nproc,
-                              maxins=maxins)
+                              maxins=maxins,
+                              max_reseed=max_reseed,
+                              max_search_depth=max_search_depth)
         aligner = BowtieAligner(name="BowtieAligner",
                                 **aligner_kwargs)
         connect(tab6interleaver.tab6, aligner.tab6)
@@ -609,7 +631,6 @@ class BowtieAlignerMixedInput(Component):
 class MutationParser(Component):
     def __init__(self,
                  min_mapq=None,
-                 separate_ambig_counts=None,
                  right_align_ambig_dels=None,
                  right_align_ambig_ins=None,
                  random_primer_len=None,
@@ -631,7 +652,6 @@ class MutationParser(Component):
                            # value of 30 for mutation counting
         super().__init__(**kwargs)
         self.min_mapq = min_mapq
-        self.separate_ambig_counts = separate_ambig_counts
         self.right_align_ambig_dels = right_align_ambig_dels
         self.right_align_ambig_ins = right_align_ambig_ins
         self.random_primer_len = random_primer_len
@@ -670,8 +690,6 @@ class MutationParser(Component):
                "-w"]
         if self.min_mapq is not None:
             cmd += ["-m", "{}".format(self.min_mapq)]
-        if self.separate_ambig_counts is not None and self.separate_ambig_counts:
-            cmd += ["--separate_ambig_counts"]
         if self.right_align_ambig_dels is not None and self.right_align_ambig_dels:
             cmd += ["--right_align_ambig_dels"]
         if self.right_align_ambig_ins is not None and self.right_align_ambig_ins:
@@ -712,9 +730,11 @@ class MutationCounter(Component):
                  variant_out=None,
                  mutations_out=None,
                  per_read_histograms=False,
+                 separate_ambig_counts=None,
                  **kwargs):
         super().__init__(**kwargs)
         self.per_read_histograms = per_read_histograms
+        self.separate_ambig_counts = separate_ambig_counts
         self.add(InputNode(name="mut"))
 
         # target_length is either an int parameter, or an OutputNode outputting 
@@ -770,6 +790,8 @@ class MutationCounter(Component):
             cmd += ["--n_primer_pairs", "{primer_pairs}"]
         if self.per_read_histograms:
             cmd += ["--hist"]
+        if self.separate_ambig_counts is not None and self.separate_ambig_counts:
+            cmd += ["--separate_ambig_counts"]
         return cmd
 
     def after_run_message(self):
@@ -1451,6 +1473,8 @@ class Sample(Component):
                  disable_soft_clipping=None,
                  nproc=None,
                  maxins=None,
+                 max_search_depth=None,
+                 max_reseed=None,
                  **kwargs):
         """
         Note: (does not perform aligner index building, mutation parsing/counting,
@@ -1527,6 +1551,8 @@ class Sample(Component):
                 connect(qtrimmer.trimmed, aligner.fastq)
             else:
                 aligner = BowtieAlignerMixedInput(maxins=maxins,
+                                                  max_search_depth=max_search_depth,
+                                                  max_reseed=max_reseed,
                                                   **aligner_params)
                 connect(qtrimmer.trimmed, aligner.interleaved_fastq)
             self.add(aligner)
@@ -1592,6 +1618,8 @@ class Sample(Component):
                 self.add(aligner)
             else:
                 aligner = BowtieAlignerMixedInput(maxins=maxins,
+                                                  max_search_depth=max_search_depth,
+                                                  max_reseed=max_reseed,
                                                   **aligner_params)
                 connect(merger.output, aligner.interleaved_fastq)
                 self.add(aligner)
@@ -1677,6 +1705,7 @@ class PostAlignment(Component):
                  require_reverse_primer_mapped=None,
                  trim_primers=None,
                  render_mutations=None,
+                 render_must_span=None,
                  max_pages=None,
                  per_read_histograms=None,
                  **kwargs):
@@ -1697,24 +1726,23 @@ class PostAlignment(Component):
             sample = samples[i]
 
             parser = MutationParser(name="MutationParser_" + sample,
-                                min_mapq=min_mapq,
-                                maxins=maxins,
-                                input_is_unpaired=input_is_unpaired,
-                                separate_ambig_counts=separate_ambig_counts,
-                                right_align_ambig_dels=right_align_ambig_dels,
-                                right_align_ambig_ins=right_align_ambig_ins,
-                                min_mutation_separation=min_mutation_separation,
-                                min_qual=min_qual_to_count,
-                                random_primer_len=random_primer_len,
-                                mutation_type=mutation_type_to_count,
-                                variant_mode=output_variant_counts,
-                               amplicon=amplicon,
-                               max_primer_offset=max_primer_offset,
-                               require_forward_primer_mapped=require_forward_primer_mapped,
-                               require_reverse_primer_mapped=require_reverse_primer_mapped,
-                               trim_primers=trim_primers,
-                                assoc_sample=sample,
-                                debug_out=debug_out)
+                                    min_mapq=min_mapq,
+                                    maxins=maxins,
+                                    input_is_unpaired=input_is_unpaired,
+                                    right_align_ambig_dels=right_align_ambig_dels,
+                                    right_align_ambig_ins=right_align_ambig_ins,
+                                    min_mutation_separation=min_mutation_separation,
+                                    min_qual=min_qual_to_count,
+                                    random_primer_len=random_primer_len,
+                                    mutation_type=mutation_type_to_count,
+                                    variant_mode=output_variant_counts,
+                                    amplicon=amplicon,
+                                    max_primer_offset=max_primer_offset,
+                                    require_forward_primer_mapped=require_forward_primer_mapped,
+                                    require_reverse_primer_mapped=require_reverse_primer_mapped,
+                                    trim_primers=trim_primers,
+                                    assoc_sample=sample,
+                                    debug_out=debug_out)
 
             self.add(parser)
 
@@ -1727,7 +1755,8 @@ class PostAlignment(Component):
                                             assoc_sample=sample,
                                             maxins=maxins,
                                             amplicon=amplicon,
-                                            max_pages=max_pages)
+                                            max_pages=max_pages,
+                                            span=render_must_span)
                 connect(parser.debug_out, renderer.input)
                 self.add(renderer)
 
@@ -1737,7 +1766,8 @@ class PostAlignment(Component):
                                       variant_out=output_variant_counts,
                                       mutations_out=output_mutation_counts,
                                       assoc_sample=sample,
-                                      per_read_histograms=per_read_histograms)
+                                      per_read_histograms=per_read_histograms,
+                                      separate_ambig_counts=separate_ambig_counts)
 
             connect_nodes(parser.parsed_mutations, counter.mut)
             self.add(counter)
@@ -1785,6 +1815,8 @@ class CorrectSequence(Component):
                  star_shared_index=None,
                  nproc=None,
                  maxins=None,
+                 max_search_depth=None,
+                 max_reseed=None,
                  amplicon=None,
                  max_primer_offset=None,
                  require_forward_primer_mapped=None,
@@ -1816,9 +1848,11 @@ class CorrectSequence(Component):
                         star_shared_index=star_shared_index,
                         nproc=nproc,
                         maxins=maxins,
+                        max_search_depth=max_search_depth,
+                        max_reseed=max_reseed,
                         min_qual_to_trim=min_qual_to_trim,
                         window_to_trim=window_to_trim,
-                        min_length_to_trim=min_length_to_trim
+                        min_length_to_trim=min_length_to_trim,
                         )
         self.add([prep,
                   sample])
@@ -1962,11 +1996,13 @@ class MutationRendererPs(Component):
                  maxins=200,
                  amplicon=False,
                  max_pages=100,
+                 span=None,
                  **kwargs):
         super().__init__(**kwargs)
         self.maxins = maxins
         self.amplicon = amplicon
         self.max_pages = max_pages
+        self.span = span
         self.add(InputNode(name="input",
                            parallel=True))
         if self.amplicon:
@@ -1986,6 +2022,8 @@ class MutationRendererPs(Component):
                "--output", "{ps}"]
         if self.amplicon:
             cmd += ["--primers", "{primers}"]
+        if self.span is not None and self.span != '':
+            cmd += ["--must-span", self.span]
         return cmd
 
 
@@ -1994,9 +2032,10 @@ class MutationRenderer(Component):
                  maxins=200,
                  amplicon=False,
                  max_pages=100,
+                 span=None,
                  **kwargs):
         super().__init__(**kwargs)
-        renderer = MutationRendererPs(maxins=maxins, amplicon=amplicon, max_pages=max_pages)
+        renderer = MutationRendererPs(maxins=maxins, amplicon=amplicon, max_pages=max_pages, span=span)
         converter = PsToPdf(maxins=maxins)
         connect(renderer.ps, converter.ps)
 

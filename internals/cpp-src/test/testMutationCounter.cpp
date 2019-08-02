@@ -15,15 +15,22 @@ using namespace mutation_parser::detail;
 using namespace mutation_counter;
 
 std::string FILEPATH = __FILE__;
+std::string BASEPATH = "";
 
 BF::path getTestFileDir() {
-    BF::path PARENTPATH = BF::path(FILEPATH).parent_path();
-    BF::path FILEDIR = PARENTPATH / "files";
-    return FILEDIR;
+    BF::path filedir;
+    if (BASEPATH == "") {
+        // data file location if explicit path to main shapemapper directory
+        // not provided by test runner (assumes software location has not
+        // changed since compilation)
+        filedir = BF::path(FILEPATH).parent_path() / "files";
+    } else {
+        filedir = BF::path(BASEPATH) / "internals" / "cpp-src" / "test" / "files";
+        //std::cout << "Using BASEPATH " << BASEPATH << " passed by argument" << std::endl;
+    }
+    BF::create_directory(filedir / "tmp");
+    return filedir;
 }
-
-
-
 
 TEST(Count, MergedRead) {
 
@@ -54,11 +61,21 @@ MERGED M01228:25:000000000-A1CW0:1:1101:22018:3573 116 137 111111111111111111110
                           0,
                           "",
                           test_dir + "/tmp/tmp.counts.txt",
-                          true,
+                          false, // generate and output histogram
                           false,
                           false,
                           false); //debug
     );
 
+}
+
+
+int main(int argc, char **argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  // set location of top-level shapemapper path so we can locate data files
+  if (argc > 1){
+      BASEPATH = argv[1];
+  }
+  return RUN_ALL_TESTS();
 }
 

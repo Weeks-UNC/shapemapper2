@@ -22,10 +22,7 @@ done
 BASE_DIR="$( cd -P "$( dirname "$SOURCE" )" && cd ../.. && pwd )"
 
 
-
-export PATH=${BASE_DIR}/internals/bin:${BASE_DIR}:${PATH}
-
-source ${BASE_DIR}/internals/install/thirdparty_paths.sh
+source ${BASE_DIR}/internals/paths/bin_paths.sh
 
 cd ${BASE_DIR}/internals/test/data
 
@@ -292,9 +289,20 @@ names_args_interleaved=( \
 --rerun-on-star-segfault
 --rerun-genomeSAindexNbase 3" \
 \
+"2-sample, 2-target parallel SHAPE, bowtie2 effort params" \
+"--target 16S_trunc.fa 23S_trunc.fa
+--out end-to-end_test_results
+--max-search-depth 12
+--max-reseed 1
+--random-primer-len 9
+--modified
+--folder ribosome_plus
+--untreated
+--folder ribosome_minus" \
+\
 )
 
-# 28 total tests
+# 29 total tests
 
 
 # associative arrays not available in bash 3

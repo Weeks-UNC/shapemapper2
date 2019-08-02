@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Insert random bytes into a binary stream
 

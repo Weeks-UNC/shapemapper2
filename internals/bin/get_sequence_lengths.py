@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Given a sequence name and a fasta file containing one or more sequences,
 output the length of each sequence to separate files. Used to dynamically update

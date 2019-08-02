@@ -342,7 +342,6 @@ namespace mutation_parser {
                       const bool require_forward_primer_mapped,
                       const bool require_reverse_primer_mapped,
                       const int max_primer_offset,
-                      const bool input_is_unpaired,
                       const bool debug) {
         // parse single read (merged, unpaired, or paired but missing mate)
 
@@ -357,7 +356,7 @@ namespace mutation_parser {
         }
 
 
-        Read read = parseSamLine(line, min_mapq, input_is_unpaired);
+        Read read = parseSamLine(line, min_mapq, false);
 
         // skip unmapped reads
         if (read.mapping_category == UNMAPPED) {
@@ -479,7 +478,6 @@ namespace mutation_parser {
                      const bool require_forward_primer_mapped,
                      const bool require_reverse_primer_mapped,
                      const int max_primer_offset,
-                     const bool input_is_unpaired,
                      const bool debug) {
         if (debug_out) {
             debug_out << "[separator] ##############################################################################\n"
@@ -498,7 +496,7 @@ namespace mutation_parser {
         for (int i = 0; i < 2; i++) {
             Read read = parseSamLine(lines[i],
                                      min_mapq,
-                                     input_is_unpaired);
+                                     true);
             reads.push_back(read);
         }
 
@@ -901,13 +899,13 @@ namespace mutation_parser {
             }
 
             bool paired,
-                    concordant,
-                    unmapped,
-                    mate_unmapped,
-                    reverse_strand,
-                    mate_reverse_strand,
-                    first_in_pair,
-                    second_in_pair;
+                 concordant,
+                 unmapped,
+                 mate_unmapped,
+                 reverse_strand,
+                 mate_reverse_strand,
+                 first_in_pair,
+                 second_in_pair;
             boost::tie(paired,
                        concordant,
                        unmapped,
@@ -919,7 +917,8 @@ namespace mutation_parser {
 
             lines.push_back(line);
 
-            if ((not mate_unmapped) and
+            if ((not input_is_unpaired) and
+                (not mate_unmapped) and
                 concordant and
                 lines.size() == 2) {
 
@@ -945,7 +944,6 @@ namespace mutation_parser {
                       const bool require_forward_primer_mapped,
                       const bool require_reverse_primer_mapped,
                       const int max_primer_offset,
-                      const bool input_is_unpaired
                      const bool debug*/
                 std::string s = parsePairedReads(lines,
                                                  max_paired_fragment_length,
@@ -962,14 +960,13 @@ namespace mutation_parser {
                                                  require_forward_primer_mapped,
                                                  require_reverse_primer_mapped,
                                                  max_primer_offset,
-                                                 input_is_unpaired,
                                                  debug);
 
                 out << s;
                 out << std::flush; // FIXME: remove if possible?
                 c++; // FIXME: don't increment for unmapped reads
                 lines.clear();
-            } else if (mate_unmapped or not concordant) {
+            } else {
                 if (debug) {
                     std::cout << lines[0] << std::endl << std::flush;
                 }
@@ -989,7 +986,6 @@ namespace mutation_parser {
                       const bool require_forward_primer_mapped,
                       const bool require_reverse_primer_mapped,
                       const int max_primer_offset,
-                      const bool input_is_unpaired,
                       const bool debug*/
                 std::string s = parseUnpairedRead(lines[0],
                                                   min_mapq,
@@ -1005,7 +1001,6 @@ namespace mutation_parser {
                                                   require_forward_primer_mapped,
                                                   require_reverse_primer_mapped,
                                                   max_primer_offset,
-                                                  input_is_unpaired,
                                                   debug);
 
                 out << s;

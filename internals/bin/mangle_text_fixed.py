@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Replace input stream with bad chars. 
 Try to mostly preserve lines and whitespace, but mess with

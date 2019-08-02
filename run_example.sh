@@ -20,14 +20,14 @@ BASE_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 
 export PATH=${BASE_DIR}:${PATH}
 
-cd ${BASE_DIR}/example_data
+cd ${BASE_DIR}
 
 shapemapper \
 --name "example-results" \
---target TPP.fa \
+--target example_data/TPP.fa \
 --amplicon \
 --overwrite \
---min-depth 4000 \
---modified --folder TPPplus \
---untreated --folder TPPminus \
---denatured --folder TPPdenat
+--min-depth 1000 \
+--modified --folder example_data/TPPplus \
+--untreated --folder example_data/TPPminus \
+--denatured --folder example_data/TPPdenat

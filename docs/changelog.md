@@ -9,6 +9,27 @@ This is a github-flavored markdown file not meant to be easily readable.
 Version history
 ---------------
 
+### 2.1.5 (August 2019)
+No future updates are planned beyond this final release.
+
+- Fixed bug in reported median mutation rates in histogram figures 
+  (previous ShapeMapper versions actually displayed the 5th percentile)
+- Added guidance for running ShapeMapper components piecemeal (see
+  [Modular workflow](modular_workflow.md))
+- Added output histogram plot of un-normalized ln(mut_rate_modified/mut_rate_untreated)
+- Reorganized list of ShapeMapper dependencies (see [Building](building.md))
+- Adjusted <kbd>--min-mutation-separation 0</kbd> behavior to match expectations
+- Added missing <kbd>--output-aligned-reads</kbd> option
+- Allow <kbd>--input_is_unpaired</kbd> argument to shapemapper_mutation_parser
+  to override flags present in SAM alignment
+- Fixed issue with unit test paths on machines outside the build environment
+- Fixed issue with undocumented --separate-ambig-counts param
+- Exposed bowtie2 effort params <kbd>-R</kbd> and <kbd>-D</kbd> as <kbd>--max-reseed</kbd> 
+  and <kbd>--max-search-depth</kbd>
+- Added a more helpful error message in certain cases of missing input files
+- Added error messages when attempting to run on a Mac or run when executables are not present
+- Added a top-level CMakeLists to simplify most common build situation
+
 ### 2.1.4 (Oct. 2018)
 - Documentation reorganized and expanded
 - Fix for crash with folder names shorter than 3 characters

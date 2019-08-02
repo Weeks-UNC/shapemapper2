@@ -179,7 +179,7 @@ def parse_args(args):
     parser.add_argument('--overwrite', action="store_true", default=False)
 
     parser.add_argument('--name', type=str, default='')
-    # FIXME: update docs to make clear that this end trim will not be performed if amplicon primer pairs are provided
+
     parser.add_argument('--random-primer-len', type=int, default=0)
     parser.add_argument('--min-depth', type=int, default=5000)
     parser.add_argument('--max-bg', type=float, default=0.05)
@@ -187,7 +187,6 @@ def parse_args(args):
     parser.add_argument('--preserve-order', action="store_true", default=False)
 
     parser.add_argument('--star-aligner', action="store_true", default=False)
-    # FIXME: document these new params
     parser.add_argument('--genomeSAindexNbase', type=int, default=0)
     # 0 indicates this parameter should be calculated according to the STAR manual's recommendation
     parser.add_argument('--star-shared-index', action="store_true", default=False)
@@ -214,6 +213,8 @@ def parse_args(args):
 
     parser.add_argument('--max-paired-fragment-length', type=int, default=800)
     # FIXME: unify this param name. some places maxins, some max_paired_fragment_length
+    parser.add_argument('--max-reseed', type=int, default=-1)
+    parser.add_argument('--max-search-depth', type=int, default=-1)
 
     parser.add_argument('--min-qual-to-count', type=int, default=30)
 
@@ -224,7 +225,8 @@ def parse_args(args):
 
     parser.add_argument('--output-processed', '--output-processed-reads',
                         dest="output_processed_reads", action="store_true", default=False)
-    parser.add_argument('--output-aligned', action="store_true", default=False)
+    parser.add_argument('--output-aligned', '--output-aligned-reads',
+                        dest="output_aligned", action="store_true", default=False)
     parser.add_argument('--output-parsed', '--output-parsed-mutations', '--output-classified',
                         dest="output_parsed", action="store_true", default=False)
     parser.add_argument('--output-counted', '--output-counted-mutations',
@@ -232,14 +234,11 @@ def parse_args(args):
     parser.add_argument('--separate-ambig-counts', action="store_true", default=False)
 
     parser.add_argument('--render-mutations', action="store_true", default=False)
+    parser.add_argument('--render-must-span', type=str, default='')
     parser.add_argument('--max-pages', type=int, default=100)
 
     parser.add_argument('--per-read-histograms', action="store_true", default=False)
 
-    #parser.add_argument('--calc-correlations', action="store_true", default=False)
-    #parser.add_argument('--corr-args', type=str, default='')
-
-    # WIP
     parser.add_argument('--primers', type=str, nargs='+', required=False)
     parser.add_argument('--amplicon', action="store_true", default=False)
     parser.add_argument('--max-primer-offset', type=int, default=10)
@@ -266,10 +265,6 @@ def parse_args(args):
     # set some dependent flags for debug output option
     if p.render_mutations:
         p.preserve_order = True
-
-    #if p.calc_correlations:
-    #    p.output_classified = True
-    #    p.corr_args = p.corr_args.split(' ')
 
     if p.right_align_ambig:
         p.right_align_ambig_dels = True
@@ -374,6 +369,16 @@ def parse_args(args):
         p.require_reverse_primer_mapped = True
     # p.max_primer_offset also considered for primer pair mapped locations
 
+    if p.render_must_span is not None and p.render_must_span != '':
+        sv = p.render_must_span.replace('-', ' ').replace(',', ' ').split()
+        try:
+            int(sv[0])
+            int(sv[1])
+        except (IndexError, ValueError):
+            msg = 'When rendering debug mutations, pass a nucleotide range with a format such as '
+            msg += '"--render-must-span 800-850".'
+            raise RuntimeError(msg)
+
     d = vars(p)
     d["fastq"] = fastqs
 
@@ -401,6 +406,11 @@ def parse_paired_input_folder(input_folder):
             raise RuntimeError(msg)
     R1.sort()
     R2.sort()
+    if len(R1) != len(R2):
+        msg = "Error: number of R1 fastq files does not match number of R2 fastq files in folder \"{}\". ".format(input_folder)
+        msg += "Ensure that 'R1' and 'R2' are present as underscore-separated fields in filenames, or specify "
+        msg += "filenames explicitly with '--R1' and '--R2' arguments."
+        raise RuntimeError(msg)
     if len(R1)==0 and len(R2)==0:
         msg = "Error: no fastq reads found in folder \"{}\"".format(input_folder)
         raise RuntimeError(msg)

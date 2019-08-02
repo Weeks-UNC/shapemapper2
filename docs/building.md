@@ -9,69 +9,59 @@ This is a github-flavored markdown file not meant to be easily readable.
 Building
 ========
 
-Note: All required executables are included with the release tarball.
+Note: All required executables are included with the release tarball,
+available on the [release page](https://github.com/Weeks-UNC/shapemapper2/releases).
+Download using the `shapemapper-2.1.5.tar.gz` link, _not_ the link for source code only.
 Rebuilding should only be needed in very specialized cases.
 
-Third-party dependencies
-------------------------
-All third-party executables are included in the release, within
-the subdirectory `internals/thirdparty`. Deleting this folder and running
-`internals/install/build_thirdparty.sh` will regenerate these files (requires 
-an active Internet connection). Most packages will be downloaded
-in executable form using conda or from the package author's preferred
-release URL, and a few components will be built from source.
+Runtime dependencies
+--------------------
+All third-party executables are included in the main release, within
+the subdirectory `internals/thirdparty`. If attempting to run from a
+source-only release, these will need to be installed at the system level.
+ - bash
+ - python >= 3.5.3 (`python3` must be visible in the PATH)
+ - threaded perl >= 5.22.0 (for bowtie2 wrapper)
+ - bowtie2 >= 2.3.0
+ - bbmap >= 37.78 (includes bbmerge), requires building JNI components
+      - jdk >= 8.0.45 (required for compiling bbmerge JNI components)
+ - java >= 8.0.45 (for bbmerge)
+ - matplotlib >= 1.5.1 (very recent versions might break some things)
+ - pipeviewer >= 1.6.0
+ - STAR aligner >= 2.5.2a (Optional. Only useful to speed up alignment against
+                           large target sequences.)
+ - scikit-learn >= 0.18.1 (Optional. Only needed if running ROC_tests.sh)
+ - graphviz >= 2.38.0 (Optional. only needed if running shapemapper with
+                       `--render-flowchart` option)
+ - ghostscript >= 9.25 (Optional. For debugging use with --render-mutations)
 
-- Bowtie2>=2.3.0 (2.3.4.3 included)
-- STAR>=2.5.2a
-- Python>=3.5 (3.5.3 included)
-- matplotlib>=1.5.1
-- numpy
-- BBmerge>=37.78 (requires java)
-- Pipe Viewer>=1.6.0
-- Graphviz (optional: for debugging use with --render-flowchart)
-- Ghostscript (optional: for debugging use with --render-mutations)
-- scikit-learn>=0.18.1 (optional: for area under ROC curve tests)
 
-In the rare case that the provided third-party executables are not 
-compatible with your platform (for example, if you get strange "GLIBC-2.XX" 
-or "ABI incompatible" errors), you're on your own. Delete the `internals/thirdparty` 
-folder entirely, and then install the listed packages at the system level 
-through your package manager or by building from source.
+Build requirements
+------------------
+- cmake >= 3.4.3
+- gcc/g++ >= 5.3.0 (must support C++11)
+- zlib
+- boost >= 1.60.0 libs: filesystem, program_options, iostreams, system
+- doxygen >= 1.8.10 (Optional. For rendering c++ documentation)
+
+
+Building ShapeMapper binaries
+-----------------------------
+
+To rebuild ShapeMapper executables
+- Delete the folder `build` if present
+- Run `internals/bin/build_binaries.sh` or run the following commands,
+  starting from inside the top-level shapemapper-2.1.5 folder:
+    - `mkdir build`
+    - `cd build`
+    - `cmake ..`
+    - `make`
 
 
 Source code documentation
 -------------------------
 - C++ documentation at `internals/cpp-src/doc/html/index.html`
 - Python documentation in source code comments (folder `internals/python`)
-
-
-C++ build requirements
-----------------------
-- recent `cmake` (>=3.3)
-- `gcc` compiler with C++11 support
-- `git` with https support
-- `build-essential` (should include `dpkg-dev`, `g++`, `libc-dev`, `libstdc++`)
-- `libboost-dev` (>=1.60.0)
-- `libboost-filesystem-dev`
-- `libboost-iostreams-dev`
-- `libboost-program-options-dev`
-- `doxygen` (optional)
-
-
-Building C++ modules
---------------------
-
-To rebuild ShapeMapper executables
-- Delete the folders `build` and `build_deps` if present
-- Run `internals/install/build_binaries.sh --use-system-libs` 
-- This assumes the tools and libraries listed above are already 
-  present at the system level.
-
-Alternatively, run `internals/install/build_all.sh`
-- This will take substantial disk space and time
-- Compiler and library dependencies listed above (with the exception
-  of Doxygen) will be downloaded and built locally within the 
-  `internals/build_deps` folder
 
 
 &nbsp;&nbsp;&nbsp;&nbsp;

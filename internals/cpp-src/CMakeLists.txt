@@ -6,6 +6,7 @@
 cmake_minimum_required(VERSION 3.3) # 3.3 wanted by Clion
 project(shapemapper)
 include(ExternalProject)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../bin)
 
 set(BUILD_TESTS ON) # Build unit tests for C++ modules.
 
