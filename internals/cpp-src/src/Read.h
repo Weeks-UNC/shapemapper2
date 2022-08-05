@@ -106,6 +106,8 @@ public:
     std::vector<bool> mapped_depth; // simple end-to-end read depths. excludes missing regions between mate pairs. does not exclude primer regions.
     std::vector<bool> depth;
     std::vector<bool> count;
+    std::vector<bool> depth_ga; // hold info on GA mutations for when using the DMS flag. Typically only set when DMS flag is used
+    std::vector<bool> count_ga;
     std::vector<Mutation> mutations;
 
     Read();
@@ -126,6 +128,8 @@ public:
     Read& setMappedDepth(const std::vector<bool> &mapped_depth_);
     Read& setDepth(const std::vector<bool> &depth_);
     Read& setCount(const std::vector<bool> &count_);
+    Read& setDepth_GA(const std::vector<bool> &depth_); // Added by Tony for DMS GA mutation processing
+    Read& setCount_GA(const std::vector<bool> &count_);
     Read& setId(const std::string &id_);
     Read& trimRightEnd(const int exclude_3prime);
     Read& stripPrimers(const PrimerPair& primer_pair);
@@ -138,6 +142,7 @@ public:
                                    const bool variant_mode);
     std::string toString() const;
     std::string serializeMutations() const;
+    std::string serializeMutations_GA() const;
     std::string serializeForTest() const;
 };
 
@@ -158,6 +163,8 @@ Read::Read()
         , depth {}
         , count {}
         , mapped_depth {}
+        , depth_ga {}
+        , count_ga {}
 { }
 
 Read::Read(const int left_, // 0-based
@@ -176,6 +183,8 @@ Read::Read(const int left_, // 0-based
         , depth {}
         , count {}
         , mapped_depth {}
+        , depth_ga {}
+        , count_ga {}
 { }
 
 // used in testMutationParser to read debug outputs back in
@@ -311,6 +320,31 @@ Read::setCount(const std::vector<bool> &count_){
     return *this;
 }
 
+// added by Tony for DMS G->A mutation processing
+Read&
+Read::setDepth_GA(const std::vector<bool> &depth_){
+    depth_ga.clear();
+    if (depth_.size() > 0) {
+        for (auto b : depth_) {
+            depth_ga.push_back(b);
+        }
+    }
+    return *this;
+}
+Read&
+Read::setCount_GA(const std::vector<bool> &count_){
+    count_ga.clear();
+    if (count_.size() > 0) {
+        for (auto b : count_) {
+            count_ga.push_back(b);
+        }
+    }
+    return *this;
+}
+
+
+
+// FIXME: Tony, do we want to add GAs to this function?
 /*
  * @brief For debugging and mutation rendering
  */
@@ -358,6 +392,28 @@ Read::serializeMutations() const {
 }
 
 /*
+ * @brief For mutation_parser (DMS GA mutations only) file output
+ */
+std::string
+Read::serializeMutations_GA() const {
+    using std::to_string;
+    std::string sep = "\t";
+    std::string o = read_types.at(read_type) + sep +
+                    id + sep +
+                    to_string(left) + sep +
+                    to_string(right) + sep +
+                    mapping_categories.at(mapping_category) + sep +
+                    to_string(primer_pair) + sep +
+                    util::toString(mapped_depth) + sep +
+                    util::toString(depth_ga) + sep +
+                    util::toString(count_ga) + "\n";
+    return o;
+}
+
+
+
+
+/*
  * @brief For testing purposes (can probably remove)
  */
 std::string
@@ -389,7 +445,7 @@ std::ostream & operator << (std::ostream &out, const Read &r)
 
 // FIXME: unify or clarify various deserialization funcs. have several funcs with slight variations for historical reasons
 
-
+// FIXME TONY: add debugging potential for GA
 /*
  * @brief For debugging and mutation rendering
  */

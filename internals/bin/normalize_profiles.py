@@ -85,7 +85,7 @@ def find_boxplot_factor(array):
     # larger RNAs.
     # x = np.fromiter((n if not isnan(n) else 0 for n in array))
     x = array[np.where(np.isfinite(array))]
-    if x.shape[0] < 10:
+    if x.shape[0] < 20:
         s = "Error: sequence contains too few nucleotides"
         s += " with quality reactivity information for"
         s += " effective normalization factor calculation."
@@ -113,19 +113,89 @@ def find_boxplot_factor(array):
             norm_factor = a / ten_pct
         except IndexError:
             raise NormError("Unable to calculate a normalization factor.")
-    return norm_factor
 
-def calc_norm_factor(profiles):
-    combined = np.hstack(profiles)
-    return find_boxplot_factor(combined)
+    norm_factor_dict = {}
+    for n in ('A','C','U', 'G'):
+        norm_factor_dict[n] =  norm_factor
 
-def normalize_profile(profile, stderrs, norm_factor):
-    norm_profile = profile/norm_factor
-    norm_stderrs = stderrs/norm_factor
+    return norm_factor_dict
+
+
+def find_pernt_factor(sequence, profile):
+    """This function performs per-nt reactivity normalization that is slightly different than boxplot normalization"""
+    
+    norm_factor_dict = {}
+
+    for n in ('A','C','U','G'):
+
+        mask = (sequence == n) & np.isfinite(profile)
+        
+        x = profile[mask]
+        if x.shape[0] < 20:
+            s = "Error: sequence contains too few "+n+" nucleotides (={})".format(x.shape[0])
+            s += " with quality reactivity information for"
+            s += " effective per-nt normalization factor calculation"
+            raise NormError(s)
+
+        else:
+            bnds = np.percentile(x, [90., 95.])
+            pmask = (x >= bnds[0]) & (x<bnds[1])
+            normset = x[pmask]
+            
+            # compute norm standard way
+            n1 = np.mean(normset)
+
+            # compute the norm only considereing reactive nts
+            n2 = np.percentile(x[x>0.001], 75)
+
+            norm_factor_dict[n] = max(n1, n2)       
+    
+
+    # perform quality checks; if signals are too low, set to nan
+    for n in norm_factor_dict:
+        if norm_factor_dict[n] < 0.002:
+            print('Signal for {} = {:.3f} is below acceptable level. All {} nts ignored'.format(n, norm_factor_dict[n], n))
+            norm_factor_dict[n] = np.nan
+
+    return norm_factor_dict   
+    
+
+
+def calc_norm_factor(sequences, profiles, pernt=False):
+    
+    combined_sequence = np.hstack(sequences)
+    combined_profile = np.hstack(profiles)
+
+    if pernt:
+        return find_pernt_factor(combined_sequence, combined_profile)
+    else:
+        return find_boxplot_factor(combined_profile)
+
+
+def normalize_profile(sequence, profile, stderrs, norm_factor):
+    
+    norm_profile = np.empty(profile.shape)
+    norm_stderrs = np.empty(profile.shape)
+    norm_profile[:] = np.nan
+    norm_stderrs[:] = np.nan
+    
+    for i in range(profile.shape[0]):
+        n = sequence[i]
+        
+        if n in norm_factor and np.isfinite(norm_factor[n]):
+            norm_profile[i] = profile[i]/norm_factor[n]
+            norm_stderrs[i] = stderrs[i]/norm_factor[n]
+        else:
+            norm_profile[i] = np.nan
+            norm_stderrs[i] = np.nan
+
     return norm_profile, norm_stderrs
 
+
+
 def load_profile(filename):
-    f = open(filename, "rU")
+    
+    f = open(filename)
 
     # do one pass to determine array length
     # TODO: might actually be faster to just resize array in memory and read in one pass
@@ -147,23 +217,26 @@ def load_profile(filename):
     headers = line.strip().split('\t')
     if len(headers)<1:
         raise RuntimeError("File \""+filename+"\" does not contain the expected header.")
-    expected_fields = ['HQ_profile','HQ_stderr']
+    expected_fields = ['Sequence', 'HQ_profile','HQ_stderr']
     for x in expected_fields:
         if x not in headers:
             raise RuntimeError("File \""+filename+"\" does not contain the expected columns.")
-    profile_col = headers.index(expected_fields[0])
-    stderr_col = headers.index(expected_fields[1])
-
+    seq_col = headers.index(expected_fields[0])
+    profile_col = headers.index(expected_fields[1])
+    stderr_col = headers.index(expected_fields[2])
+    
+    sequence = []
     profile = np.empty(length)
     stderrs = np.empty(length)
 
     for i in range(length):
         line = f.readline()
         s = line.strip().split('\t')
+        sequence.append(s[seq_col])
         profile[i] = float(s[profile_col])
         stderrs[i] = float(s[stderr_col])
 
-    return profile, stderrs
+    return np.array(sequence), profile, stderrs
 
 # overwrite existing norm profile and stderr columns if present
 # otherwise, add new columns. If an output file is given, write
@@ -175,16 +248,9 @@ def write_norm_columns(profile,
                        decimal_places=6):
     n = "{{:.{}f}}".format(decimal_places)
 
-    f = open(filename, "rU")
+    f = open(filename)
     lines = f.readlines()
     f.close()
-
-    if outname is not None:
-        # create path to output file if needed
-        folder, filename = os.path.split(outname)
-        if len(folder) > 0:
-            os.makedirs(folder, exist_ok=True)
-        o = open(outname, "w")
 
     norm_prof_header = "Norm_profile"
     norm_stderr_header = "Norm_stderr"
@@ -205,6 +271,7 @@ def write_norm_columns(profile,
         if len(folder) > 0:
             os.makedirs(folder, exist_ok=True)
         f = open(outname, "w")
+    
     lines.pop(0)
     if not ("Norm_profile" in headers or "Norm_stderr" in headers):
         headers.extend(["Norm_profile", "Norm_stderr"])
@@ -235,7 +302,7 @@ def dup(filename, outname):
     when normalization can't be completed, but an output
     file is still expected.
     """
-    f = open(filename, "rU")
+    f = open(filename)
     lines = f.readlines()
     f.close()
     o = open(outname, "w")
@@ -268,6 +335,9 @@ if __name__ == "__main__":
     h = "Warn if normalization fails, instead of exiting with error."
     parser.add_argument("--warn-on-error", action="store_true", default=False, help=h)
 
+    h = "Normalize data using per-nt DMS normalization scheme."
+    parser.add_argument("--dms", action="store_true", default=False, help=h)
+
     p = parser.parse_args(sys.argv[1:])
 
     if p.tonorm is not None and p.normout is not None:
@@ -299,23 +369,26 @@ if __name__ == "__main__":
         if f not in p.toscale:
             p.toscale.append(f)
             p.scaleout.append(o)
-
+    
+    sequence_list = []
     profile_list = []
     stderr_list = []
 
     for name in p.tonorm:
-        profile, stderr = load_profile(name)
+        sequence, profile, stderr = load_profile(name)
         print("loaded profile and stderrs from "+name)
+        sequence_list.append(sequence)
         profile_list.append(profile)
         stderr_list.append(stderr)
 
     try:
-        factor = calc_norm_factor(profile_list)
-        print("calculated normalization factor: {}".format(factor))
+        factors = calc_norm_factor(sequence_list, profile_list, pernt=p.dms)
+        print("calculated normalization factor: {}".format(factors))
+    
     except NormError as e:
         if p.warn_on_error:
             print(e)
-            factor = None
+            factors = None
         else:
             raise e
 
@@ -323,14 +396,14 @@ if __name__ == "__main__":
         input_filename = p.toscale[i]
         output_filename = p.scaleout[i]
         # FIXME: This ends up reading each file twice
-        profile, stderr = load_profile(input_filename)
-        if factor is not None:
-            profile, stderr = normalize_profile(profile, stderr, factor)
+        sequence, profile, stderr = load_profile(input_filename)
+        if factors is not None:
+            profile, stderr = normalize_profile(sequence, profile, stderr, factors)
             write_norm_columns(profile, stderr, input_filename, output_filename)
-            if output_filename is None:
-                print("updated {} with normalized data columns".format(input_filename))
-            else:
-                print("wrote normalized data from file {} to output file {}".format(input_filename, output_filename))
+            #if output_filename is None:
+            #    print("updated {} with normalized data columns".format(input_filename))
+            #else:
+            #    print("wrote normalized data from file {} to output file {}".format(input_filename, output_filename))
         else:
             # just copy data to new files, don't create new columns
             if output_filename is not None:

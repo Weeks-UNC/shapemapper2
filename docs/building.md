@@ -12,7 +12,7 @@ Building
 Note: All required executables are included with the release tarball,
 available on the [release page](https://github.com/Weeks-UNC/shapemapper2/releases).
 Download using the `shapemapper-2.1.5.tar.gz` link, _not_ the link for source code only.
-Rebuilding should only be needed in very specialized cases.
+Rebuilding should only be needed in specialized cases.
 
 Runtime dependencies
 --------------------
@@ -36,19 +36,36 @@ source-only release, these will need to be installed at the system level.
  - ghostscript >= 9.25 (Optional. For debugging use with --render-mutations)
 
 
-Build requirements
-------------------
+Requirements for building ShapeMapper binaries
+--------------------------------------------------
 - cmake >= 3.4.3
 - gcc/g++ >= 5.3.0 (must support C++11)
 - zlib
 - boost >= 1.60.0 libs: filesystem, program_options, iostreams, system
 - doxygen >= 1.8.10 (Optional. For rendering c++ documentation)
 
+Building the C++ routines is most easily accomplished using a conda environment. 
+Please refer to the conda documentation for installation instructions and other
+information (https://docs.conda.io/projects/conda/en/latest/index.html).
+
+To create the necessary environment, run the command
+>conda env -create -f build/env.yml
+
+This will create a new environment named shapemapper_build, the presence of which
+you can confirm via the command
+>conda env list
+
+Before building, you will want to activate the environment via the command
+>conda activate shapemapper_build
+
+More information on creating environments from yml files can be found at:
+https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#creating-an-environment-from-an-environment-yml-file
+
 
 Building ShapeMapper binaries
 -----------------------------
 
-To rebuild ShapeMapper executables
+To build ShapeMapper executables
 - Delete the folder `build` if present
 - Run `internals/bin/build_binaries.sh` or run the following commands,
   starting from inside the top-level shapemapper-2.1.5 folder:

@@ -83,6 +83,12 @@ def build_pipeline(fastq=None,
         name = sanitize(name)
     else:
         name = "Pipeline"
+    
+    dms = False
+    if mutation_type_to_count == "dms":
+        dms = True
+
+
 
     pipeline = Pipeline(name=name)
     pipeline.overwrite = overwrite
@@ -324,11 +330,13 @@ def build_pipeline(fastq=None,
 
             pipeline.add(p)
 
+        
         # Normalize profiles as a group
         if not indiv_norm:
             normer = NormProfile(name="NormalizeAsGroup",
                                  profiles=profile_nodes,
-                                 target_names=target_names)
+                                 target_names=target_names, 
+                                 dms=dms)
             pipeline.add(normer)
             # rewire so normalized profiles get used for downstream steps
             for i in range(len(target_names)):
@@ -435,7 +443,8 @@ def build_pipeline(fastq=None,
                           output_aligned=output_aligned,
                           output_parsed=output_parsed,
                           output_counted=output_counted,
-                          render_mutations=render_mutations)
+                          render_mutations=render_mutations,
+                          dms=dms)
 
     return pipeline
 
@@ -446,7 +455,8 @@ def move_output_files(pipeline,
                       output_parsed=None,
                       output_counted=None,
                       calc_correlations=None,
-                      render_mutations=None):
+                      render_mutations=None,
+                      dms=False):
     """
     Change paths and simplify filenames for main output files
     """
@@ -468,11 +478,15 @@ def move_output_files(pipeline,
                                    +"_profile.txt"))
 
     # SHAPE files
+    if dms:
+        extension = '.dms'
+    else:
+        extension = '.shape'
     for node in pipeline.collect_component_nodes(name="shape"):
         node.set_file(os.path.join(pipeline.out,
                                    pipeline.name+"_"+
                                    sanitize(node.assoc_rna)
-                                   +".shape"))
+                                   +extension))
 
     # MAP files
     for node in pipeline.collect_component_nodes(name="map"):

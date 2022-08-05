@@ -9,13 +9,15 @@ This is a github-flavored markdown file not meant to be easily readable.
 ![](docs/images/header_profile.png)
 **ShapeMapper2**
 ===============
-*Copyright 2019 Steven Busan*. This project is licensed under the terms of the 
+*Copyright 2019 Steven Busan; 2022 Anthony Mustoe*. This project is licensed under the terms of the 
 MIT license.
 
-ShapeMapper automates the calculation of RNA structure probing reactivities 
+ShapeMapper automates the calculation of RNA chemical probing reactivities 
 from mutational profiling (MaP) experiments, in which chemical adducts on RNA
 are detected as internal mutations in cDNA through reverse transcription and 
-read out by massively parallel sequencing. ShapeMapper performs 
+read out by massively parallel sequencing. While originally built for analyzing SHAPE structure 
+probing data, ShapeMapper is broadly useful for other types probing experiments, and includes
+a DMS mode for analyzing DMS experiments. ShapeMapper performs 
 - [Reference sequence correction](docs/analysis_steps.md#optional-reference-sequence-correction)
 - [Read basecall quality trimming](docs/analysis_steps.md#initial-basecall-quality-trimming)
 - [Paired read merging](docs/analysis_steps.md#paired-read-merging) (using [`BBmerge`](https://sourceforge.net/projects/bbmap/))
@@ -58,8 +60,8 @@ ShapeMapper will only run on 64-bit Linux systems (Mac and Windows are not curre
 - To run all unit and end-to-end tests, run `internals/test/run_all_tests.sh`. 
   This should take about 5-15 minutes. (optional) 
 
-- See [Building](docs/building.md) if the provided binaries do not run on 
-  your platform.
+- Alternatively, you can build ShapeMapper if the provided binaries do not run on your platform. 
+  Building is relatively straightforward using conda. See [Building](docs/building.md)
 
 <!-- #### -->
 
@@ -101,6 +103,10 @@ shapemapper <parameters> <inputs> | --version | --help
 ```
 #### Optional:
 ```
+--dms        Run using DMS mode. Data will be normalized on a per-nucleotide basis.
+             Note that this option is optimized for DMS-MaP data collected using 
+             Marathon and/or TGIRT enzmyes. See docs/dmsmode.md for more details.
+
 --name       Unique name to prefix all output filenames. Highly recommended if 
              running multiple ShapeMapper instances from the same folder.
 
@@ -319,6 +325,12 @@ Multiple RNAs, randomly-primed experiment, STAR aligner:
 
   ``shapemapper --name example5 --target 16S.fa 23S.fa --out ribosome --random-primer-len 9 --star-aligner --modified --folder ribosome_plus --untreated --folder ribosome_minus --denatured --folder ribosome_denat``
 
+&nbsp;&nbsp;&nbsp;&nbsp;
+
+Process single DMS modified sample using DMS mode:
+
+``shapemapper --name example6 --target add.fa --out add_dms --dms --amplicon --modified --folder ribosome_plus``
+
 <!-- #### -->&nbsp;&nbsp;&nbsp;&nbsp;
 
 
@@ -327,6 +339,9 @@ Additional documentation
 
 ### Frequently asked questions
 see [FAQ](docs/FAQ.md)
+
+### DMS mode
+see [DMSmode](docs/dmsmode.md)
 
 ### Low-quality profile warning message
 If ShapeMapper gives a red warning message about possible low-quality
@@ -379,5 +394,8 @@ Siegfried NA, Busan S, Rice GM, Nelson JA, Weeks KM. RNA motif discovery by SHAP
 Smola MJ, Rice GM, Busan S, Siegfried NA, Weeks KM. Selective 2'-hydroxyl acylation analyzed by primer extension and mutational profiling (SHAPE-MaP) for direct, versatile and accurate RNA structure analysis. _Nat Protoc_. 2015, 10(11):1643-69.
 [link](http://www.ncbi.nlm.nih.gov/pubmed/21979276)
 
+#### For DMS-specific analyses, please cite:
+
+Mitchell D, Cotter J, Saleem I, Mustoe AM. In prep.
 
 &nbsp;&nbsp;&nbsp;&nbsp;
