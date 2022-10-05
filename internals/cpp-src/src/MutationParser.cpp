@@ -913,8 +913,10 @@ namespace mutation_parser {
         if (mutation_type == "dms") {
     
             // create ga filename
-            std::string outname_ga = outname.substr(0, outname.find_first_of(".")) + "_GA" + outname.substr(outname.find_first_of("."));
+            // std::string outname_ga = outname.substr(0, outname.find_first_of(".")) + "_GA" + outname.substr(outname.find_first_of("."));
+            std::string outname_ga = outname + "ga";
             
+
             //std::ofstream out_GA(outname_ga, std::ios_base::out | std::ios_base::binary);
             out_GA.open(outname_ga, std::ios_base::out | std::ios_base::binary);
 

@@ -507,13 +507,14 @@ def qc_stats_dms(seq,
         msg = "      G and/or U FAILURE, but other reactivities may be usable\n"
         msg += "      Possible causes:\n"
         msg += "       - improper pH control during DMS reaction\n"
+        msg += "       - use of a different RT enzyme than MarathonRT\n"
         msg += "       - poor reverse transcription conditions, resulting\n"
         msg += "         in low adduct adduct read-through or detection\n"
         msg += "       - very highly structured or protein bound RNA\n"
         print(msg)
 
 
-    elif not (overall_pass['A'] or overall_pass['C']):
+    elif not (overall_pass['A'] and overall_pass['C']):
         msg = "      A and/or C FAILURE: Possible causes:\n"
         msg += "       - low sequencing depth\n"
         msg += "       - DNA contamination\n"
@@ -587,8 +588,8 @@ def render_profiles(num, seq, reactivity, stderr,
     if reactivity is not None:
 
         if dms:
-            orange_thresh = 0.25
-            red_thresh = 0.5
+            orange_thresh = 0.15
+            red_thresh = 0.4
         else:
             orange_thresh = 0.4
             red_thresh = 0.85
@@ -624,7 +625,7 @@ def render_profiles(num, seq, reactivity, stderr,
                 red_errs.append(stderr[i])
     
     if dms:
-        yMin, ymax = (-0.1, 2)
+        yMin, ymax = (-0.1, 1.5)
     else:
         yMin, ymax = (-0.5, 4)
     
@@ -885,7 +886,11 @@ def render_profiles(num, seq, reactivity, stderr,
     ax3xlabel = ax3.set_xlabel("Nucleotide", horizontalalignment="left", fontsize=14, labelpad=0)
     x,y = ax3xlabel.get_position()
     ax3xlabel.set_position((0,y))
-    ax3ylabel = ax3.set_ylabel("Mutation rate (%)", horizontalalignment="left", fontsize=14)
+
+    if dms:
+        ax3ylabel = ax3.set_ylabel("Mutation rate", horizontalalignment="left", fontsize=14)
+    else:
+        ax3ylabel = ax3.set_ylabel("Mutation rate (%)", horizontalalignment="left", fontsize=14)
     x,y = ax3ylabel.get_position()
     ax3ylabel.set_position((x,0))
 

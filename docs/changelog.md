@@ -9,6 +9,19 @@ This is a github-flavored markdown file not meant to be easily readable.
 Version history
 ---------------
 
+### 2.2.1 (August 2022)
+- Added dmsmode option for DMS-specific data processing workflow to obtain
+  highly specific probing signals at all four nucleobases. Read dmsmode 
+  documentation in docs for more information.
+- Fixed unintended bug in prior versions that kept paired unmerged reads from
+  being analyzed jointly. This bug-fix improves accuracy of amplicon mode
+  and also permits measurement of correlated modications in unmerged
+  read mates, enabling long-range PAIR measurement. 
+- Implement place-holder fix for a bug that caused ShapeMapper to hang in 
+  parallel mode with --star-aligner option. Now, when -star-aligner
+  mode is selected, --serial mode is automatically turned on
+- Updated build instructions to make it easier to build binaries
+
 ### 2.1.5 (August 2019)
 No future updates are planned beyond this final release.
 

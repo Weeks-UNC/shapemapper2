@@ -290,10 +290,15 @@ def parse_args(args):
     if p.star_aligner:
         p.serial = True
         print('Using serial mode, which is currently required for STAR aligner')
+    
+    if p.dms:
+        p.serial = True
+        print('Using serial mode, which is currently required for DMS mode')
+
 
     if p.dms and p.max_bg == 0.05:
         p.max_bg = 0.02
-        print('Using default DMS max-bg of 0.01\n\tYou can manually override using the max-bg flag')
+        print('Using default DMS max-bg of 0.02\n\tYou can manually override using the max-bg flag')
 
     # then parse samples
     groups, rest = split_sample_args(rest)

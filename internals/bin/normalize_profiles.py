@@ -144,9 +144,12 @@ def find_pernt_factor(sequence, profile):
             
             # compute norm standard way
             n1 = np.mean(normset)
-
-            # compute the norm only considereing reactive nts
-            n2 = np.percentile(x[x>0.001], 75)
+            
+            try:
+                # compute the norm only considereing reactive nts
+                n2 = np.percentile(x[x>0.001], 75)
+            except IndexError:
+                n2 = 0
 
             norm_factor_dict[n] = max(n1, n2)       
     

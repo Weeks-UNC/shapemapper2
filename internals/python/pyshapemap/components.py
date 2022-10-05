@@ -1805,6 +1805,7 @@ class PostAlignment(Component):
                                       assoc_sample=sample,
                                       per_read_histograms=per_read_histograms,
                                       separate_ambig_counts=separate_ambig_counts)
+            
 
             connect_nodes(parser.parsed_mutations, counter.mut)
             self.add(counter)
@@ -1812,6 +1813,25 @@ class PostAlignment(Component):
             counts.append(counter.mutations)
 
 
+            #if dms:
+            #    counterga = MutationCounter(name="MutationCounter_" + sample,
+            #                          target_length=target_length,
+            #                          primer_pairs=primer_pairs,
+            #                          variant_out=output_variant_counts,
+            #                          mutations_out=output_mutation_counts,
+            #                          assoc_sample=sample,
+            #                          per_read_histograms=per_read_histograms,
+            #                          separate_ambig_counts=separate_ambig_counts)
+                
+            #   connect_nodes(parser.parsed_mutations, counter.mut)
+            #   self.add(counterga)
+
+            #   counts.append(counterga.mutations)
+
+    
+
+
+            
         profilehandler = ProfileHandler(target=target,
                                         target_name=target_name,
                                         mindepth=min_depth,
