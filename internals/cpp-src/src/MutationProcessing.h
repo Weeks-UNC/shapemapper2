@@ -423,7 +423,8 @@ namespace mutation {
             std::vector<bool>,
             std::vector<Mutation>,
             std::vector<bool>,
-            std::vector<bool>>
+            std::vector<bool>,
+            std::vector<Mutation>>
     filterQscoresCountDepths(const std::vector<Mutation> &mutations,
                              const std::string &seq,
                              const std::string &qual,
@@ -757,7 +758,8 @@ namespace mutation {
                                  local_effective_count,
                                  included_mutations,
                                  effective_GA_depth,
-                                 local_effective_GA_count);
+                                 local_effective_GA_count,
+                                 included_GA_mutations);
     };
 
     // FIXME: replace with Read constructor?
@@ -1453,12 +1455,15 @@ Read::filterQscoresCountDepths(const int min_qual,
     std::vector<bool> depth_ga;
     std::vector<bool> count_ga;
     std::vector<Mutation> included_mutations;
+    std::vector<Mutation> included_mutationsGA;
+
 
     boost::tie(depth,
                count,
                included_mutations,
                depth_ga,
-               count_ga) =
+               count_ga,
+               included_mutationsGA) =
             mutation::filterQscoresCountDepths(this->mutations,
                                                this->seq,
                                                this->qual,
@@ -1475,7 +1480,8 @@ Read::filterQscoresCountDepths(const int min_qual,
 
     if (mutation_type.length() > 0 && mutation_type == "dms") {
         (*this).setDepth_GA(depth_ga)
-               .setCount_GA(count_ga);
+               .setCount_GA(count_ga)
+               .setMutationsGA(included_mutationsGA);
     }
 
 

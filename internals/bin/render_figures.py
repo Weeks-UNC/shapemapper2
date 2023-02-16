@@ -357,7 +357,8 @@ def qc_stats_dms(seq,
                 min_positive,
                 min_high_mut):
     
-    high_mut_thresh = {'A':0.05, 'C':0.05, 'U':0.01, 'G':0.002}
+
+    high_mut_thresh = {'A':0.02, 'C':0.02, 'U':0.005, 'G':0.002}
 
 
     print("\nDMS mode quality control checks:")
@@ -437,8 +438,14 @@ def qc_stats_dms(seq,
             print(msg)
 
 
+
+        if num_depth_pass < 20:
+            overall_pass[nt] = False
+            print("FAIL: Normalization unreliable due to low number of measured nucleotides!")
+            print("      Consider including another RNA as a normalization control")
+
         # check high background positions
-        if bg_rate is not None and num_depth_pass > 20:
+        elif bg_rate is not None:
         
             num_high_bg = sum(bg_rate[overall_mask] > max_bg)
             high_bg_frac = num_high_bg/float(num_depth_pass)
@@ -478,8 +485,7 @@ def qc_stats_dms(seq,
                 msg += "      modified and untreated samples.\n"
                 print(msg)
 
-        if num_depth_pass > 20:
-            
+        else:            
             num_high_mut = np.sum(diff[overall_mask] > high_mut_thresh[nt])
             num_inv_high_mut = np.sum(diff[overall_mask] < -high_mut_thresh[nt])
             

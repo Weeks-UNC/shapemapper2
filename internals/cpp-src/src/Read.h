@@ -109,6 +109,7 @@ public:
     std::vector<bool> depth_ga; // hold info on GA mutations for when using the DMS flag. Typically only set when DMS flag is used
     std::vector<bool> count_ga;
     std::vector<Mutation> mutations;
+    std::vector<Mutation> mutationsGA;
 
     Read();
     Read(const int left_,
@@ -119,6 +120,7 @@ public:
     Read& setRight(const int right_);
     Read& setStrand(const int strand_);
     Read& setMutations(const std::vector<Mutation> &mutations_);
+    Read& setMutationsGA(const std::vector<Mutation> &mutations_);
     Read& setReadType(const int read_type_);
     Read& setMappingCategory(const int mapping_category_);
     Read& setMappingCategory(const std::string &mapping_category_);
@@ -160,6 +162,7 @@ Read::Read()
         , seq ("")
         , qual ("")
         , mutations {}
+        , mutationsGA {}
         , depth {}
         , count {}
         , mapped_depth {}
@@ -178,6 +181,7 @@ Read::Read(const int left_, // 0-based
         , seq (seq_)
         , id ("")
         , mutations {}
+        , mutationsGA {}
         , read_type (UNSPECIFIED_READ_TYPE)
         , qual ("")
         , depth {}
@@ -249,6 +253,18 @@ Read::setMutations(const std::vector<Mutation> &mutations_){
     }
     return *this;
 }
+
+Read&
+Read::setMutationsGA(const std::vector<Mutation> &mutations_){
+    mutationsGA.clear();
+    if (mutations_.size() > 0) {
+        for (auto &m : mutations_) {
+            mutationsGA.push_back(Mutation(m));
+        }
+    }
+    return *this;
+}
+
 
 Read&
 Read::setReadType(const int read_type_){
@@ -406,7 +422,8 @@ Read::serializeMutations_GA() const {
                     to_string(primer_pair) + sep +
                     util::toString(mapped_depth) + sep +
                     util::toString(depth_ga) + sep +
-                    util::toString(count_ga) + "\n";
+                    util::toString(count_ga) + sep +
+                    mutation::toString(mutationsGA) + "\n";
     return o;
 }
 

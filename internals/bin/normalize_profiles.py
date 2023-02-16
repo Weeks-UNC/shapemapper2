@@ -131,7 +131,7 @@ def find_pernt_factor(sequence, profile):
         mask = (sequence == n) & np.isfinite(profile)
         
         x = profile[mask]
-        if x.shape[0] < 20:
+        if x.shape[0] < 10:
             s = "Error: sequence contains too few "+n+" nucleotides (={})".format(x.shape[0])
             s += " with quality reactivity information for"
             s += " effective per-nt normalization factor calculation"
