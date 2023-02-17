@@ -906,7 +906,7 @@ namespace mutation_parser {
         out.push(file_out);
 
         
-
+        /* N7COMMENT
         // init GA file output for DMS flag
         //BI::filtering_ostream out_GA; // declare, but only init if dms flag is set
         std::ofstream out_GA;
@@ -931,6 +931,7 @@ namespace mutation_parser {
             //}
             //out_GA.push(file_out_GA);
          }
+        */
 
         // init debug_out if filename provided
         if (debug_outname.size() > 0) {
@@ -1025,11 +1026,13 @@ namespace mutation_parser {
 
                 out << s;
                 out << std::flush; // FIXME: remove if possible?
-
+                
+                /* N7COMMENT
                 if (mutation_type == "dms") {
                     out_GA << sga;
                     out_GA << std::flush;
                 }
+                */
 
                 c++; // FIXME: don't increment for unmapped reads
                 lines.clear();
@@ -1077,13 +1080,15 @@ namespace mutation_parser {
 
                 out << s;
                 out << std::flush; // FIXME: remove if possible
-
+                
+                /*N7COMMENT
                 if (mutation_type == "dms") {
                     //std::cout << sga << std::endl << std::flush;
 
                     out_GA << sga;
                     out_GA << std::flush;
                 }
+                */
 
                 c++;
                 lines.clear();
@@ -1092,11 +1097,12 @@ namespace mutation_parser {
 
         out << std::flush;
 
+        /* N7COMMENT
         if (mutation_type == "dms") {
             out_GA << std::flush;
             out_GA.close();
         }
-
+        */
 
         if (c < 1) {
             if (warn_on_no_mapped) {
