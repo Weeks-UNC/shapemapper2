@@ -11,7 +11,7 @@ Building
 
 Note: All required executables are included with the release tarball,
 available on the [release page](https://github.com/Weeks-UNC/shapemapper2/releases).
-Download using the `shapemapper-2.1.5.tar.gz` link.
+Download using the `shapemapper2-2.2.tar.gz` link.
 
 
 Building from source
