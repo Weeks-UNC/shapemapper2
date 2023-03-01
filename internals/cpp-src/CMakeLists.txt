@@ -8,8 +8,7 @@ project(shapemapper)
 include(ExternalProject)
 
 
-#set(CMAKE_PREFIX_PATH /storage/mustoe/software/anaconda3/envs/shapemapper_build/include/boost;/storage/mustoe/software/anaconda3/envs/shapemapper_build/lib)
-#set(CMAKE_PREFIX_PATH /storage/mustoe/software/anaconda3/envs/python3/lib/cmake/Boost-1.74.0)
+set(CMAKE_PREFIX_PATH ../thirdparty/miniconda/envs/shapemapper_make/lib/Boost-1.81.0)
 
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../bin)
@@ -29,8 +28,7 @@ set(CMAKE_C_FLAGS "-Wall -g -O2")
 #    message(STATUS "${_variableName}=${${_variableName}}")
 #endforeach()
 
-#find_package(Boost PATHS /storage/mustoe/software/anaconda3/envs/shapemapper_build/include/boost COMPONENTS filesystem program_options iostreams system REQUIRED)
-find_package(Boost COMPONENTS filesystem program_options iostreams system REQUIRED)
+find_package(Boost PATHS ../thirdparty/miniconda/envs/shapemapper_make/include/boost COMPONENTS filesystem program_options iostreams system REQUIRED)
 
 
 if ( Boost_FOUND )

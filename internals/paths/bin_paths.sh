@@ -9,6 +9,7 @@ BASE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd ../.. && pwd )"
 # update path to include various executables
 export PATH=${BASE_DIR}:${PATH}
 export PATH=${BASE_DIR}/internals/bin:${PATH}
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${BASE_DIR}/internals/thirdparty/miniconda/envs/shapemapper_make/lib
 
 source ${BASE_DIR}/internals/paths/thirdparty_paths.sh
 

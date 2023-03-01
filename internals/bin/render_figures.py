@@ -678,6 +678,17 @@ def render_profiles(num, seq, reactivity, stderr,
     ax1.set_xlim(1,len(num))
     #ax1.set_yticks(fontsize=9)
 
+    yticks=ax1.get_yticks()
+    if dms:
+      yticks = np.linspace(0, 1.4, 8)
+      yticks = [round(tick, 1) for tick in yticks]
+      ax1.set_yticks(yticks)
+    else:
+      yticks = np.linspace(-.5, 4, 10)
+      ax1.set_yticks(yticks)
+
+    
+
     if not qc_pass:
         msg = "Note: possible data quality issue - see log file"
         return_flag = False
@@ -744,7 +755,8 @@ def render_profiles(num, seq, reactivity, stderr,
         if dms:
             rect1 = Rectangle((rectX,-0.1), rectW, orange_thresh-yMin, facecolor="black", edgecolor="none")
             rect2 = Rectangle((rectX,orange_thresh), rectW, red_thresh-orange_thresh, facecolor="orange", edgecolor="none")
-            rect3 = Rectangle((rectX,red_thresh), rectW, 2-red_thresh, facecolor="red", edgecolor="none")
+            #rect3 = Rectangle((rectX,red_thresh), rectW, 2-red_thresh, facecolor="red", edgecolor="none")
+            rect3 = Rectangle((rectX,red_thresh), rectW, 1, facecolor="red", edgecolor="none")
         else:
             rect1 = Rectangle((rectX,-0.5), rectW, orange_thresh+0.5, facecolor="black", edgecolor="none")
             rect2 = Rectangle((rectX,orange_thresh), rectW, red_thresh-orange_thresh, facecolor="orange", edgecolor="none")
@@ -764,7 +776,7 @@ def render_profiles(num, seq, reactivity, stderr,
     ax1.tick_params(axis='y',which='minor',left='off')
     #ax1.tick_params(axis='x',which='minor')
 
-    ax1.minorticks_on()
+    #ax1.minorticks_on()
 
     yticks = ax1.get_yticks()
     stripped_ticks = [str(val).rstrip('0').rstrip('.') for val in yticks]
@@ -833,7 +845,7 @@ def render_profiles(num, seq, reactivity, stderr,
     ax2.get_xaxis().tick_bottom()   # remove unneeded ticks
     ax2.get_yaxis().tick_left()
 
-    ax2.minorticks_on()
+    #ax2.minorticks_on()
     ax2.tick_params(axis='y',which='minor',left='off')
     #ax2.tick_params(axis='x',which='minor')
 
@@ -918,11 +930,14 @@ def render_profiles(num, seq, reactivity, stderr,
     ax3.get_xaxis().tick_bottom()   # remove unneeded ticks
     ax3.get_yaxis().tick_left()
 
-    ax3.minorticks_on()
+    #ax3.minorticks_on()
     ax3.tick_params(axis='y',which='minor',left='off')
+
+    ax3.set_yticks(np.linspace(0, .16, num = 9))
     
     if not dms:
         ticks = [x*100 for x in ax3.get_yticks()]
+        ticks = [int(tick) for tick in ticks]
         ax3.set_yticklabels([str(val).rstrip('0').rstrip('.') for val in ticks])
 
     for line in ax3.get_yticklines():
