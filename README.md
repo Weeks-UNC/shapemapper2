@@ -40,15 +40,15 @@ Installation
 ------------
 ShapeMapper will only run on 64-bit Linux systems (Mac and Windows are not currently supported).
 
-- Download latest [release](https://github.com/Weeks-UNC/ShapeMapper2/releases/download/2.1.5/shapemapper-2.1.5.tar.gz)
-    - On most systems, typing `wget https://github.com/Weeks-UNC/ShapeMapper2/releases/download/2.1.5/shapemapper-2.1.5.tar.gz`
+- Download latest [release](https://github.com/Weeks-UNC/shapemapper2/releases/download/2.2/shapemapper2-2.2.tar.gz)
+    - On most systems, typing `wget https://github.com/Weeks-UNC/shapemapper2/releases/download/2.2/shapemapper2-2.2.tar.gz`
       will download the file on the commandline.
-    - Be sure to download from the `shapemapper-2.1.5.tar.gz` link, _not_ the source code-only links, which
+    - Be sure to download from the `shapemapper2-2.2.tar.gz` link, _not_ the source code-only links, which
       do not include executables.
 
 - Extract release tarball using
     
-    `tar -xvf shapemapper-2.1.5.tar.gz`
+    `tar -xvf shapemapper2-2.2.tar.gz`
 
 - Add shapemapper executable to PATH (optional - google this if you don't know how)
 
@@ -61,7 +61,7 @@ ShapeMapper will only run on 64-bit Linux systems (Mac and Windows are not curre
   This should take about 5-15 minutes. (optional) 
 
 - Alternatively, you can build ShapeMapper if the provided binaries do not run on your platform. 
-  Building is relatively straightforward using conda. See [Building](docs/building.md)
+  Building is relatively straightforward using conda. See <a href="https://github.com/Weeks-UNC/shapemapper2/blob/v22-release/docs/building.md">building</a>.
 
 <!-- #### -->
 
