@@ -13,7 +13,7 @@ dependencies:
     - bbmap=37.78
     - java-jdk=8.0.112
     - perl-threaded=5.32.1
-    - star=2.7.10b
+    - star=2.5.2a
     - scikit-learn=1.1.2
     - graphviz=7.1.0
     - cxx-compiler=1.5.2

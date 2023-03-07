@@ -48,17 +48,17 @@ cd ${BASE_DIR}/internals/thirdparty
 
 #Installs bowtie2
 cd ${BASE_DIR}/internals/thirdparty
-p='https://github.com/BenLangmead/bowtie2/releases/download/v2.5.1/bowtie2-2.5.1-linux-x86_64.zip'
-if [ ! -f 'bowtie2-2.5.1-linux-x86_64' ];
+p='https://github.com/BenLangmead/bowtie2/releases/download/v2.3.4.3/bowtie2-2.3.4.3-linux-x86_64.zip'
+if [ ! -f 'bowtie2-2.3.4.3-linux-x86_64' ];
 then
    echo "Downloading bowtie2"
-   curl -L ${p} -o bowtie2-2.5.1-linux-x86_64.zip
+   curl -L ${p} -o bowtie2-2.3.4.3-linux-x86_64.zip
 fi
-if [ ! -d bowtie2-2.5.1-linux-x86_64 ]; then
-   unzip bowtie2-2.5.1-linux-x86_64.zip
+if [ ! -d bowtie2-2.3.4.3-linux-x86_64 ]; then
+   unzip bowtie2-2.3.4.3-linux-x86_64.zip
 fi
 if [ ! -d 'bowtie2' ]; then
-   mv bowtie2-2.5.1-linux-x86_64 bowtie2
+   mv bowtie2-2.3.4.3-linux-x86_64 bowtie2
 fi 
 
 # ghostscript
