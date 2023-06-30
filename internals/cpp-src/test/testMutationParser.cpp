@@ -964,7 +964,10 @@ std::vector<Mutation> m{{3, 5, "", "", ""},
 
 						{3, 6, "", "", ""},
 						{1, 2, "AA", "12", ""},
-						{1, 4, "TG", "12", ""}
+						{1, 4, "TG", "12", ""},
+                        {2, 5, "AC", "12", ""},
+                        {3, 6, "GG", "12", ""},
+                        {4, 7, "AA", "12", ""}
 };
 std::vector<std::string> expected{"A-", "T-", "G-", "C-",
 								  "-A", "-T", "-G", "-C",
@@ -972,10 +975,13 @@ std::vector<std::string> expected{"A-", "T-", "G-", "C-",
 								  "TA", "TG", "TC",
 								  "GA", "GT", "GC",
 								  "CA", "CT", "CG",
-								  "multinuc_deletion",
-								  "multinuc_insertion",
-								  "multinuc_mismatch",
-};
+                                  "multinuc_deletion",
+                                  "multinuc_insertion",
+                                  "C_multinuc_mismatch",
+                                  "A_multinuc_mismatch",
+                                  "T_multinuc_mismatch",
+                                  "G_multinuc_mismatch",
+								  };
 
 TEST(MutationClassify, All) {
 	for (int i = 0; i < expected.size(); ++i) {
@@ -1590,15 +1596,17 @@ TEST(filterQscoresCountDepths, simple){
 	std::vector<Mutation> exp_included_mutations = {};
 	std::vector<Mutation> exp_excluded_mutations = {};
 
-	std::vector<bool> depth;
-	std::vector<bool> count;
+	std::vector<bool> depth, depth_GA;
+	std::vector<bool> count, count_GA;
 	std::vector<bool> initial_depth = stringToBoolVect("1111111111111111");
 	std::vector<Mutation> included_mutations;
-	std::vector<Mutation> excluded_mutations;
+	std::vector<Mutation> included_mutationsGA;
+
 	boost::tie(depth,
 			   count,
 			   included_mutations,
-			   excluded_mutations) = filterQscoresCountDepths(mutations,
+			   depth_GA, count_GA,
+               included_mutationsGA) = filterQscoresCountDepths(mutations,
 															  seq,
 															  qual,
 															  initial_depth,
@@ -1636,15 +1644,16 @@ TEST(filterQscoresCountDepths, variant_mode_on){
 	std::vector<Mutation> exp_included_mutations = {};
 	std::vector<Mutation> exp_excluded_mutations = {};
 
-	std::vector<bool> depth;
-	std::vector<bool> count;
+	std::vector<bool> depth, depth_GA;
+	std::vector<bool> count, count_GA;
 	std::vector<bool> initial_depth = stringToBoolVect("1111111111111111");
 	std::vector<Mutation> included_mutations;
-	std::vector<Mutation> excluded_mutations;
+    std::vector<Mutation> included_mutationsGA;
+
 	boost::tie(depth,
 			   count,
 			   included_mutations,
-			   excluded_mutations) = filterQscoresCountDepths(mutations,
+			   depth_GA, count_GA, included_mutationsGA) = filterQscoresCountDepths(mutations,
 															  seq,
 															  qual,
 															  initial_depth,
@@ -1681,15 +1690,16 @@ TEST(filterQscoresCountDepths, variant_mode_off){
 	std::vector<Mutation> exp_included_mutations = {};
 	std::vector<Mutation> exp_excluded_mutations = {};
 
-	std::vector<bool> depth;
-	std::vector<bool> count;
+	std::vector<bool> depth, depth_GA;
+	std::vector<bool> count, count_GA;
 	std::vector<bool> initial_depth = stringToBoolVect("1111111111111111");
 	std::vector<Mutation> included_mutations;
-	std::vector<Mutation> excluded_mutations;
+    std::vector<Mutation> included_mutationsGA;
+
 	boost::tie(depth,
 			   count,
 			   included_mutations,
-			   excluded_mutations) = filterQscoresCountDepths(mutations,
+			   depth_GA, count_GA, included_mutationsGA) = filterQscoresCountDepths(mutations,
 															  seq,
 															  qual,
 															  initial_depth,
@@ -1726,15 +1736,16 @@ TEST(filterQscoresCountDepths, variant_mode_mismatch){
 	std::vector<Mutation> exp_included_mutations = {};
 	std::vector<Mutation> exp_excluded_mutations = {};
 
-	std::vector<bool> depth;
-	std::vector<bool> count;
+	std::vector<bool> depth, depth_GA;
+	std::vector<bool> count, count_GA;
 	std::vector<bool> initial_depth = stringToBoolVect("1111111111111111");
 	std::vector<Mutation> included_mutations;
-	std::vector<Mutation> excluded_mutations;
+    std::vector<Mutation> included_mutationsGA;
 	boost::tie(depth,
 			   count,
 			   included_mutations,
-			   excluded_mutations) = filterQscoresCountDepths(mutations,
+			   depth_GA, count_GA,
+               included_mutationsGA) = filterQscoresCountDepths(mutations,
 															  seq,
 															  qual,
 															  initial_depth,
@@ -2404,7 +2415,7 @@ K00270:121:HWNJGBBXX:6:1106:2767:34565	147	chr11:65505800-65505900	1	44	77S73M	=
 				 true, // require_reverse_primer_mapped
 				 10, // max_primer_offset
 				 true, // input_is_unpaired
-				 true, // debug,
+				 false, // debug,
 				 true //warn_on_no_mapped
 		);
 	//);

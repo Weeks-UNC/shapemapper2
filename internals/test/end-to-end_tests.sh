@@ -42,6 +42,29 @@ names_args_interleaved=( \
 --modified
 --unpaired-folder TPPplus" \
 \
+"1 sample serial DMS" \
+"--target TPP.fa
+--serial
+--nproc 2
+--out end-to-end_test_results
+--modified
+--folder TPPplus" \
+\
+"1 sample parallel DMS" \
+"--target TPP.fa
+--nproc 2
+--out end-to-end_test_results
+--modified
+--folder TPPplus" \
+\
+"1 sample serial DMS, STAR" \
+"--target TPP.fa
+--nproc 2
+--star-aligner
+--out end-to-end_test_results
+--modified
+--folder TPPplus" \
+\
 "1 sample parallel SHAPE, sequence correction, 2 processors" \
 "--target TPP.fa
 --out end-to-end_test_results

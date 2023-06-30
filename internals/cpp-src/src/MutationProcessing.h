@@ -422,19 +422,20 @@ namespace mutation {
     boost::tuple<std::vector<bool>,
             std::vector<bool>,
             std::vector<Mutation>,
+            std::vector<bool>,
+            std::vector<bool>,
             std::vector<Mutation>>
     filterQscoresCountDepths(const std::vector<Mutation> &mutations,
                              const std::string &seq,
                              const std::string &qual,
                              const std::vector<bool> &effective_depth_in,
                              const int left,
-
                              const int min_qual,
                              const std::string &mutation_type,
                              const bool variant_mode) {
 
         std::vector<Mutation> included_mutations;
-        std::vector<Mutation> excluded_mutations;
+        std::vector<Mutation> included_GA_mutations; // vector for storing GA mutations in context of DMS flag
         int len = seq.length();
         len = std::max(len, 0);
         //std::cout << "len: " << len << std::endl;
@@ -548,6 +549,7 @@ namespace mutation {
         for (int i = 0; i < mutations.size(); ++i) {
             Mutation m(mutations[i]);
             bool bad_mutation = false;
+            bool g_to_a = false;
 
             // limit to specific mutation type if given
             // FIXME: this relies on the template class being Mutation
@@ -555,10 +557,17 @@ namespace mutation {
                                                       "TA", "TG", "TC",
                                                       "GA", "GT", "GC",
                                                       "CA", "CT", "CG",
-                                                      "multinuc_mismatch"};
+                                                      "A_multinuc_mismatch", "C_multinuc_mismatch",
+                                                      "G_multinuc_mismatch", "T_multinuc_mismatch", "N_multinuc_mismatch"};
             std::vector<std::string> insert_tags = {"-A", "-T", "-G", "-C", "-N"};
             std::vector<std::string> gap_tags = {"A-", "T-", "G-", "C-"};
-
+            // *** New tags for dms removing the GA mutation type *** //
+            std::vector<std::string> dms_tags = {"AT", "AG", "AC",
+                                                 "TA", "TG", "TC",
+                                                 "GT", "GC",
+                                                 "CA", "CT", "CG",
+                                                 "A_multinuc_mismatch", "C_multinuc_mismatch",
+                                                 "T_multinuc_mismatch"};
             if (mutation_type.length() > 0) {
                 if (mutation_type == "mismatch") {
                     if (std::find(mismatch_tags.begin(), mismatch_tags.end(), m.tag) == mismatch_tags.end()) {
@@ -584,9 +593,15 @@ namespace mutation {
                     if (m.tag != "complex_deletion" && m.tag != "complex_insertion") {
                         bad_mutation = true;
                     }
+                } else if (mutation_type == "dms"){
+                    if (m.tag == "GA") {
+                        g_to_a = true;
+                    }
+                    else if (std::find(dms_tags.begin(), dms_tags.end(), m.tag) == dms_tags.end()) {
+                        bad_mutation = true;
+                    }
                 }
             }
-
             // look at basecalls within mutation
             if (not bad_mutation) {
                 for (auto c : m.qual) {
@@ -660,7 +675,6 @@ namespace mutation {
                         effective_depth.at(n) = 0;
                     } catch (std::out_of_range &exception) { }
                 }
-                excluded_mutations.push_back(Mutation(m));
             } else {
                 if (variant_mode) {
                     // include entire covered region (even in gap positions)
@@ -671,6 +685,18 @@ namespace mutation {
                             effective_depth.at(n) = 1;
                         } catch (std::out_of_range &exception) { }
                     }
+                    included_mutations.push_back(Mutation(m));
+
+                } else if ((mutation_type == "dms") && g_to_a) {
+                    // exclude entire covered region from primary count vector -- basically treat it as a bad mutation
+                    for (int n = m.left + 1 - left; n < m.right - left; ++n) { 
+                        try {
+                            effective_depth.at(n) = 0;
+                        } catch (std::out_of_range &exception) { }
+                    }
+                    // add mutation to GA vector
+                    included_GA_mutations.push_back(Mutation(m));
+
                 } else {
                     // exclude covered region, include inferred adduct site
                     for (int n = m.left + 1 - left;
@@ -683,23 +709,57 @@ namespace mutation {
                     try {
                         effective_depth.at(m.right - 1 - left) = 1;
                     } catch (std::out_of_range &exception) { }
+                
+                    included_mutations.push_back(Mutation(m));
                 }
-                included_mutations.push_back(Mutation(m));
             }
         }
 
-        // also mark mutation locations in simplified array
+        // mark primary mutation locations in simplified array
         std::vector<bool> local_effective_count(len, 0);
         for (auto &m:included_mutations) {
             try {
                 local_effective_count.at(m.right - 1 - left) = 1;
             } catch (std::out_of_range &exception) { }
         }
+        
+        
+        // init GA-specific vectors
+        std::vector<bool> effective_GA_depth(effective_depth.size(), 0); // I should be able to use len here, but use .size() to be safe
+        std::vector<bool> local_effective_GA_count(len, 0);
+
+        if (mutation_type == "dms") {
+
+            // copy depths from primary vector
+            for (int i = 0; i < effective_depth.size(); ++i) {
+                effective_GA_depth[i] = effective_depth[i];
+            }
+
+            // go through primary mutations and remove from GA depth
+            for (auto &m:included_mutations) {
+                for (int n = m.left + 1 - left; n < m.right - left; ++n) {
+                    try {
+                        effective_GA_depth.at(n) = 0;
+                    } catch (std::out_of_range &exception) { }
+                }
+            }
+            // now create GA-specific count and update
+            for (auto &m:included_GA_mutations) {
+                try {
+                    local_effective_GA_count.at(m.right - 1 - left) = 1;
+                    effective_GA_depth.at(m.right - 1 - left) = 1;
+                } catch (std::out_of_range &exception) { }
+            }
+        }
+
+
 
         return boost::make_tuple(effective_depth,
                                  local_effective_count,
                                  included_mutations,
-                                 excluded_mutations);
+                                 effective_GA_depth,
+                                 local_effective_GA_count,
+                                 included_GA_mutations);
     };
 
     // FIXME: replace with Read constructor?
@@ -1392,12 +1452,18 @@ Read::filterQscoresCountDepths(const int min_qual,
                                const bool variant_mode) {
     std::vector<bool> depth;
     std::vector<bool> count;
+    std::vector<bool> depth_ga;
+    std::vector<bool> count_ga;
     std::vector<Mutation> included_mutations;
-    std::vector<Mutation> excluded_mutations;
+    std::vector<Mutation> included_mutationsGA;
+
+
     boost::tie(depth,
                count,
                included_mutations,
-               excluded_mutations) =
+               depth_ga,
+               count_ga,
+               included_mutationsGA) =
             mutation::filterQscoresCountDepths(this->mutations,
                                                this->seq,
                                                this->qual,
@@ -1408,7 +1474,17 @@ Read::filterQscoresCountDepths(const int min_qual,
                                                variant_mode);
     (*this).setMutations(included_mutations)
            .setDepth(depth)
-           .setCount(count);
+           .setCount(count)
+           ;
+
+
+    if (mutation_type.length() > 0 && mutation_type == "dms") {
+        (*this).setDepth_GA(depth_ga)
+               .setCount_GA(count_ga)
+               .setMutationsGA(included_mutationsGA);
+    }
+
+
     return *this;
 }
 

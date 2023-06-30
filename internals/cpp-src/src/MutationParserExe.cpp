@@ -100,7 +100,7 @@ int main(int argc, char *argv[]) {
              "Exclude mutations that contain or are adjacent to any basecalls with Phred quality scores below this value. This filter is also applied to the calculation of the effective read depth.")
 
             ("use_only_mutation_type", po::value<std::string>(&use_only_mutation_type)->default_value(""),
-             "use only mutations from a specific mutation class (not recommended). Possible values: mismatch gap insert gap_multi insert_multi complex")
+             "Default is to include all mutation types. Passing dms will process data using DMS mutation signatures. Other possible values (though not recommended). mismatch gap insert gap_multi insert_multi complex")
 
             ("variant_mode,v",  po::bool_switch(&variant_mode)->default_value(false),
             "If true, nearby mutation merging and ambiguous mutation realignment steps will not be performed. Used by shapemapper to simplify sequence variant detection, i.e. SNP calling.")

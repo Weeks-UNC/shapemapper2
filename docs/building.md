@@ -11,51 +11,34 @@ Building
 
 Note: All required executables are included with the release tarball,
 available on the [release page](https://github.com/Weeks-UNC/shapemapper2/releases).
-Download using the `shapemapper-2.1.5.tar.gz` link, _not_ the link for source code only.
-Rebuilding should only be needed in very specialized cases.
+Download using the `shapemapper2-2.2.tar.gz` link.
 
-Runtime dependencies
+
+Building from source
 --------------------
-All third-party executables are included in the main release, within
-the subdirectory `internals/thirdparty`. If attempting to run from a
-source-only release, these will need to be installed at the system level.
- - bash
- - python >= 3.5.3 (`python3` must be visible in the PATH)
- - threaded perl >= 5.22.0 (for bowtie2 wrapper)
- - bowtie2 >= 2.3.0
- - bbmap >= 37.78 (includes bbmerge), requires building JNI components
-      - jdk >= 8.0.45 (required for compiling bbmerge JNI components)
- - java >= 8.0.45 (for bbmerge)
- - matplotlib >= 1.5.1 (very recent versions might break some things)
- - pipeviewer >= 1.6.0
- - STAR aligner >= 2.5.2a (Optional. Only useful to speed up alignment against
-                           large target sequences.)
- - scikit-learn >= 0.18.1 (Optional. Only needed if running ROC_tests.sh)
- - graphviz >= 2.38.0 (Optional. only needed if running shapemapper with
-                       `--render-flowchart` option)
- - ghostscript >= 9.25 (Optional. For debugging use with --render-mutations)
+Navigate to `shapemapper2/internals/thirdparty_helper/`
 
+Run:
+`get_miniconda.sh`
 
-Build requirements
-------------------
-- cmake >= 3.4.3
-- gcc/g++ >= 5.3.0 (must support C++11)
-- zlib
-- boost >= 1.60.0 libs: filesystem, program_options, iostreams, system
-- doxygen >= 1.8.10 (Optional. For rendering c++ documentation)
+Upon completion run:
+`build_thirdparty.sh`
+
+Navigate to `shapemapper2/internals/bin`
+
+Run:
+`build_binaries.sh`
 
 
 Building ShapeMapper binaries
 -----------------------------
 
-To rebuild ShapeMapper executables
-- Delete the folder `build` if present
-- Run `internals/bin/build_binaries.sh` or run the following commands,
-  starting from inside the top-level shapemapper-2.1.5 folder:
-    - `mkdir build`
-    - `cd build`
-    - `cmake ..`
-    - `make`
+To build ShapeMapper executables
+- Delete the folder `shapemapper2/build` if present
+
+Navigate to `shapemapper2/internals/bin`
+Run:
+`build_binaries.sh`
 
 
 Source code documentation

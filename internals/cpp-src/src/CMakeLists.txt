@@ -5,6 +5,7 @@
 
 set(CMAKE_EXE_LINKER_FLAGS "-static-libstdc++")
 
+
 include_directories(${Boost_INCLUDE_DIRS})
 
 add_executable(shapemapper_read_trimmer ReadTrimmerExe.cpp)

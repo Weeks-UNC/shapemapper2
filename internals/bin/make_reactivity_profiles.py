@@ -257,7 +257,7 @@ def load_counts(filename):
 
     mismatch_headers = [
         "AT", "AG", "AC", "TA", "TG", "TC", "GA", "GT", "GC", "CA", "CT", "CG",
-        "multinuc_mismatch",
+        "A_multinuc_mismatch", "C_multinuc_mismatch", "G_multinuc_mismatch", "T_multinuc_mismatch", "N_multinuc_mismatch"
     ]
 
     deletion_headers = [
@@ -393,6 +393,8 @@ if __name__ == "__main__":
     parser.add_argument("--mindepth", type=int, default=None)
     parser.add_argument("--maxbg", type=float, default=None)
     parser.add_argument("--random-primer-len", type=int, default=None)
+    parser.add_argument("--dms", action='store_true', help='Use DMS normalization')
+    
 
     p = parser.parse_args(sys.argv[1:])
 

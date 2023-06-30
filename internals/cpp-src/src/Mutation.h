@@ -10,7 +10,8 @@
 #include <iostream>
 #include <fstream>
 #include <exception>
-
+#include <string>
+using namespace std;
 
 const std::vector<std::string> mutation_classes = {
     "A-", "T-", "G-", "C-",
@@ -21,7 +22,11 @@ const std::vector<std::string> mutation_classes = {
     "CA", "CT", "CG",
     "multinuc_deletion",
     "multinuc_insertion",
-    "multinuc_mismatch",
+    "A_multinuc_mismatch",
+    "C_multinuc_mismatch",
+    "G_multinuc_mismatch",
+    "T_multinuc_mismatch",
+    "N_multinuc_mismatch",
     "complex_deletion",
     "complex_insertion",
 };
@@ -225,7 +230,17 @@ public:
             } else if (d == 0 and seq.length() > 1) {
                 s = "multinuc_insertion";
             } else if (d == seq.length()) {
-                s = "multinuc_mismatch";
+                if (local_target.substr(right - 1 - target_pos, 1) == "A") {
+                    s = "A_multinuc_mismatch";
+                } else if (local_target.substr(right - 1 - target_pos, 1) == "C") {
+                    s = "C_multinuc_mismatch";
+                } else if (local_target.substr(right - 1 - target_pos, 1) == "G") {
+                    s = "G_multinuc_mismatch";
+                } else if (local_target.substr(right - 1 - target_pos, 1) == "T") {
+                    s = "T_multinuc_mismatch";
+		} else {
+		    s = "N_multinuc_mismatch";
+                }
             } else if (seq.length() < d) {
                 s = "complex_deletion";
             } else if (seq.length() > d) {

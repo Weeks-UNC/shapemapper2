@@ -19,7 +19,7 @@ from numpy import isfinite, nan
 
 
 def load_tab(filename):
-    f = open(filename, "rU")
+    f = open(filename)
 
     # do one pass to determine array length
     # TODO: might actually be faster to just resize array in memory and read in one pass

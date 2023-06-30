@@ -1,6 +1,8 @@
 # --------------------------------------------------------------------- #
 #  This file is a part of ShapeMapper, and is licensed under the terms  #
-#  of the MIT license. Copyright 2018 Steven Busan.                     #
+#  of the MIT license. Copyright 2018 Steven Busan            			#
+#  								 2023 Anthony Mustoe                    #
+#                                     David Mitchell III                #
 # --------------------------------------------------------------------- #
 
 import os
@@ -242,6 +244,8 @@ def parse_args(args):
     parser.add_argument('--primers', type=str, nargs='+', required=False)
     parser.add_argument('--amplicon', action="store_true", default=False)
     parser.add_argument('--max-primer-offset', type=int, default=10)
+    parser.add_argument('--dms', action="store_true", default=False)
+
 
     # TODO: optional syntax to auto-generate sample names from file/folder names
 
@@ -282,6 +286,19 @@ def parse_args(args):
             check_fasta(fa)
     if p.out:
         check_folder(p.out)
+    
+    if p.star_aligner:
+        p.serial = True
+        print('Using serial mode, which is currently required for STAR aligner')
+    
+    if p.dms:
+        p.serial = True
+        print('Using serial mode, which is currently required for DMS mode')
+
+
+    if p.dms and p.max_bg == 0.05:
+        p.max_bg = 0.02
+        print('Using default DMS max-bg of 0.02\n\tYou can manually override using the max-bg flag')
 
     # then parse samples
     groups, rest = split_sample_args(rest)
@@ -344,9 +361,13 @@ def parse_args(args):
         msg = "Error: denatured control specified without untreated control."
         raise RuntimeError(msg)
 
+    # Including dms mutation exclusion
+    if p.dms and (p.mutation_type_to_count is None or p.mutation_type_to_count == ""):
+        p.mutation_type_to_count = "dms"
+
     possible_mutation_types = ["", "mismatch", "gap", "insert", 
                                "gap_multi", "insert_multi", 
-                               "complex"]
+                               "complex", "dms"]
     if p.mutation_type_to_count not in possible_mutation_types:
         msg = 'Unrecognized argument "{}" to "--mutation-type-to-count". Possible values: {}'
         msg = msg.format(p.mutation_type_to_count, 

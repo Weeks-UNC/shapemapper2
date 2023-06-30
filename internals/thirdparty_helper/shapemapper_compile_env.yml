@@ -1,0 +1,22 @@
+name: shapemapper_make_env
+channels:
+    - conda-forge
+    - bioconda
+    - defaults
+    - anaconda
+    - conda-forge/label/testing
+dependencies:
+    - matplotlib=3.6.2
+    - numpy=1.19.5
+    - python=3.9.12
+    - libgcc=7.2.0
+    - bbmap=37.78
+    - java-jdk=8.0.112
+    - perl-threaded=5.32.1
+    - star=2.5.2a
+    - scikit-learn=1.1.2
+    - graphviz=7.1.0
+    - cxx-compiler=1.5.2
+    - cmake=3.25.2
+    - boost-cpp=1.81.0
+    - zlib=1.2.13

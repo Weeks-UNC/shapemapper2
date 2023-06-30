@@ -307,6 +307,8 @@ namespace mutation_parser {
                     debug_out << "skipped read because mapped ends not near a matched amplicon primer pair\n"
                               << std::flush;
                 }
+
+                // std::cout << "skipped read because mapped ends not near a matched amplicon primer pair\n" << std::flush;
                 off_target = true;
             }
         } else if (require_forward_primer_mapped and fw_primer_index < 0) {
@@ -315,6 +317,7 @@ namespace mutation_parser {
                 << max_primer_offset << " nts (inclusive) of required amplicon forward primer\n"
                 << std::flush;
             }
+            // std::cout << "skipped read because mapped ends not within +/- nts of amplicon forard primer\n" << std::flush;
             off_target = true;
         } else if (require_reverse_primer_mapped and rv_primer_index < 0) {
             if (debug_out) {
@@ -322,12 +325,13 @@ namespace mutation_parser {
                 << max_primer_offset << " nts (inclusive) of required amplicon reverse primer\n"
                 << std::flush;
             }
+            // std::cout << "skipped read because mapped ends not within +/- nts of amplicon reverse primer\n" << std::flush;
             off_target = true;
         }
         return off_target;
     }
 
-    std::string
+    boost::tuple<std::string, std::string>
     parseUnpairedRead(const std::string &line,
                       const int min_mapq,
                       const bool right_align_ambig_dels,
@@ -360,12 +364,12 @@ namespace mutation_parser {
 
         // skip unmapped reads
         if (read.mapping_category == UNMAPPED) {
-            return "";
+            return boost::make_tuple("","");
         }
 
         // skip reads below mapping quality threshold
         if (read.mapping_category == LOW_MAPQ) {
-            return read.serializeMutations();
+            return boost::make_tuple(read.serializeMutations(), read.serializeMutations());
         }
 
         int fw_primer_index, rv_primer_index;
@@ -393,20 +397,23 @@ namespace mutation_parser {
             } else {
                 rfp = false;
             }
-            bool off_target = isOffTargetPairedRead(fw_primer_index,
-                                                    rv_primer_index,
-                                                    rfp,
-                                                    rrp,
-                                                    max_primer_offset);
-        }
+            off_target = isOffTargetPairedRead(fw_primer_index,
+                                               rv_primer_index,
+                                               rfp,
+                                               rrp,
+                                               max_primer_offset);
 
+        }
+        
+      
         /*if (debug_out and off_target) {
             debug_out << "OFF_TARGET\n" << std::flush;
         }*/
         if (off_target) {
             read.setMappingCategory(OFF_TARGET);
-            return read.serializeMutations();
+            return boost::make_tuple(read.serializeMutations(), read.serializeMutations());
         }
+
 
         int primer_index = std::max(fw_primer_index,
                                     rv_primer_index);
@@ -453,16 +460,23 @@ namespace mutation_parser {
                 .setMappingCategory(read.mapping_category)
                 .setMappedDepth(read.mapped_depth)
                 .setPrimerPair(read.primer_pair);
+        
         // Note: using primer pair matched within +/- max_primer_offset,
         //       not relaxed overlap search only used for trimming in rare cases
         std::string s = processed_read.serializeMutations();
         if (debug) {
             std::cout << "processed_read.serializeMutations(): " << s << "\n" << std::flush;
         }
-        return s;
+
+        std::string sga = "";
+        if (mutation_type == "dms") {
+            sga = processed_read.serializeMutations_GA();
+        }
+        return boost::make_tuple(s, sga);
+
     }
 
-    std::string
+    boost::tuple<std::string, std::string>
     parsePairedReads(const std::vector <std::string> &lines,
                      const int max_paired_fragment_length,
                      const int min_mapq,
@@ -479,6 +493,7 @@ namespace mutation_parser {
                      const bool require_reverse_primer_mapped,
                      const int max_primer_offset,
                      const bool debug) {
+
         if (debug_out) {
             debug_out << "[separator] ##############################################################################\n"
             << std::flush;
@@ -490,6 +505,7 @@ namespace mutation_parser {
 
         // parse group of two reads R1 and R2
         std::string s = "";
+        std::string sga = "";
         bool concordant = true;
         std::vector <Read> reads;
 
@@ -508,7 +524,7 @@ namespace mutation_parser {
 
         if (reads[R1].mapping_category == UNMAPPED and
             reads[R2].mapping_category == UNMAPPED) {
-            return "";
+            return boost::make_tuple("","");
         }
 
         int fw_read_index = R1;
@@ -543,7 +559,8 @@ namespace mutation_parser {
             if (debug) {
                 std::cout << "returned from margeMatePairsSimple()\n" << std::flush;
             }
-            return simple_merged.serializeMutations();
+            return boost::make_tuple(simple_merged.serializeMutations(), simple_merged.serializeMutations());
+
         } else {
             int included_count = 0;
             for (int i = 0; i < 2; i++) {
@@ -594,7 +611,7 @@ namespace mutation_parser {
             if (off_target) {
                 Read simple_merged = mergeMatePairsSimple(reads);
                 simple_merged.setMappingCategory(OFF_TARGET);
-                return simple_merged.serializeMutations();
+                return boost::make_tuple(simple_merged.serializeMutations(), simple_merged.serializeMutations());
             }
 
             int primer_index = std::max(fw_primer_index,
@@ -650,8 +667,8 @@ namespace mutation_parser {
                                                         rfp,
                                                         rrp,
                                                         max_primer_offset);
-
-                /*if (debug_out and off_target) {
+                
+                /* if (debug_out and off_target) {
                     debug_out << "OFF_TARGET\n" << std::flush;
                 }*/
 
@@ -699,7 +716,10 @@ namespace mutation_parser {
 
             //if (debug_out) { debug_out << "[separator]\n"; }
             processed_read.setReadType(PAIRED);
-            s += processed_read.serializeMutations();
+            s = processed_read.serializeMutations();
+            if (mutation_type == "dms") {
+                sga = processed_read.serializeMutations_GA();
+            }
 
         } else {
             // paired reads mapped separately
@@ -716,7 +736,10 @@ namespace mutation_parser {
                 }
 
                 if (reads[i].mapping_category != INCLUDED) {
-                    s += reads[i].serializeMutations();
+                    s = reads[i].serializeMutations();
+                    if (mutation_type == "dms") {
+                        sga = reads[i].serializeMutations_GA();
+                    }
                     continue;
                 }
 
@@ -736,10 +759,13 @@ namespace mutation_parser {
                                          matching_primer_pairs[i],
                                          debug);
 
-                s += processed_read.serializeMutations();
+                s = processed_read.serializeMutations();
+                if (mutation_type == "dms") {
+                    sga = processed_read.serializeMutations_GA();
+                }
             }
         }
-        return s;
+        return boost::make_tuple(s, sga);
     }
 
     // FIXME: just make a class to pass these names around
@@ -831,6 +857,7 @@ namespace mutation_parser {
                   const bool input_is_unpaired,
                   const bool debug,
                   const bool warn_on_no_mapped = false) {
+    
 
         std::vector <PrimerPair> primer_pairs;
         if (primers_filename != "") {
@@ -878,13 +905,41 @@ namespace mutation_parser {
         }
         out.push(file_out);
 
+        
+        /* N7COMMENT
+        // init GA file output for DMS flag
+        //BI::filtering_ostream out_GA; // declare, but only init if dms flag is set
+        std::ofstream out_GA;
+        if (mutation_type == "dms") {
+    
+            // create ga filename
+            // std::string outname_ga = outname.substr(0, outname.find_first_of(".")) + "_GA" + outname.substr(outname.find_first_of("."));
+            std::string outname_ga = outname + "ga";
+            
+
+            //std::ofstream out_GA(outname_ga, std::ios_base::out | std::ios_base::binary);
+            out_GA.open(outname_ga, std::ios_base::out | std::ios_base::binary);
+
+            if (!out_GA) {
+                throw std::runtime_error(
+                        "ERROR: Could not open output file " + outname_ga + "\nCheck file and folder permissions.");
+            }
+
+            //if (BF::extension(BF::path(outname_ga)) == ".gz") {
+                // compress using gzip if requested
+            //    out_GA.push(BI::gzip_compressor());
+            //}
+            //out_GA.push(file_out_GA);
+         }
+        */
+
         // init debug_out if filename provided
         if (debug_outname.size() > 0) {
             mutation::debug_out.open(debug_outname, std::ios_base::out | std::ios_base::binary);
             if (!mutation::debug_out) {
                 throw std::runtime_error(
-                        "ERROR: Could not open debug output file " + debug_outname +
-                        "\nCheck file and folder permissions.");
+                            "ERROR: Could not open debug output file " + debug_outname +
+                            "\nCheck file and folder permissions.");
             }
         }
 
@@ -916,6 +971,11 @@ namespace mutation_parser {
                        second_in_pair) = getReadMappingProperties(line);
 
             lines.push_back(line);
+            
+            // TONY give opportunity to read in both lines
+            if ((not input_is_unpaired) and (not mate_unmapped) and concordant and lines.size() != 2) {
+                continue;
+            }
 
             if ((not input_is_unpaired) and
                 (not mate_unmapped) and
@@ -945,7 +1005,9 @@ namespace mutation_parser {
                       const bool require_reverse_primer_mapped,
                       const int max_primer_offset,
                      const bool debug*/
-                std::string s = parsePairedReads(lines,
+                
+                std::string s, sga;
+                boost::tie(s, sga) = parsePairedReads(lines,
                                                  max_paired_fragment_length,
                                                  min_mapq,
                                                  right_align_ambig_dels,
@@ -964,8 +1026,17 @@ namespace mutation_parser {
 
                 out << s;
                 out << std::flush; // FIXME: remove if possible?
+                
+                /* N7COMMENT
+                if (mutation_type == "dms") {
+                    out_GA << sga;
+                    out_GA << std::flush;
+                }
+                */
+
                 c++; // FIXME: don't increment for unmapped reads
                 lines.clear();
+
             } else {
                 if (debug) {
                     std::cout << lines[0] << std::endl << std::flush;
@@ -987,7 +1058,11 @@ namespace mutation_parser {
                       const bool require_reverse_primer_mapped,
                       const int max_primer_offset,
                       const bool debug*/
-                std::string s = parseUnpairedRead(lines[0],
+                
+
+                std::string s, sga;
+
+                boost::tie(s, sga) = parseUnpairedRead(lines[0],
                                                   min_mapq,
                                                   right_align_ambig_dels,
                                                   right_align_ambig_ins,
@@ -1005,12 +1080,29 @@ namespace mutation_parser {
 
                 out << s;
                 out << std::flush; // FIXME: remove if possible
+                
+                /*N7COMMENT
+                if (mutation_type == "dms") {
+                    //std::cout << sga << std::endl << std::flush;
+
+                    out_GA << sga;
+                    out_GA << std::flush;
+                }
+                */
+
                 c++;
                 lines.clear();
             }
         }
 
         out << std::flush;
+
+        /* N7COMMENT
+        if (mutation_type == "dms") {
+            out_GA << std::flush;
+            out_GA.close();
+        }
+        */
 
         if (c < 1) {
             if (warn_on_no_mapped) {

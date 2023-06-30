@@ -9,7 +9,7 @@ CONDA_PATH=${BASE_DIR}/internals/thirdparty/miniconda
 
 
 # python, bbmerge, graphviz (dot), STAR
-export PATH="${CONDA_PATH}/bin:${PATH}"
+export PATH="${CONDA_PATH}/envs/shapemapper_make/bin:${PATH}"
 
 # perl
 export PERL5LIB="${CONDA_PATH}/lib/perl5/5.22.0"

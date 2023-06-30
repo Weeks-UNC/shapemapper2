@@ -908,6 +908,7 @@ class NormProfile(Component):
                  profiles=None,
                  target_name=None,
                  target_names=None,
+                 dms=False,
                  **kwargs):
         super().__init__(**kwargs)
         if profile is not None and profiles is not None:
@@ -951,22 +952,35 @@ class NormProfile(Component):
 
         self.add(StdoutNode())
         self.add(StderrNode())
+        
+        self.dms = dms
 
     def cmd(self):
         cmd = [pyexe,
                os.path.join(bin_dir, "normalize_profiles.py"),
                "--warn-on-error", # don't crash if not enough data to normalize
                "--tonorm"]
+
         for node in self.input_nodes:
             name = node.get_name()
             cmd += ["{{{}}}".format(name)]
+        
         cmd += ["--normout"]
         for node in self.output_nodes:
             if isinstance(node, (StdoutNode, StderrNode)):
                 continue
             name = node.get_name()
             cmd += ["{{{}}}".format(name)]
+
+        if self.dms:
+            cmd += ["--dms"]
+
         return cmd
+    
+    def after_run_message(self):
+        return self.read_stdout()
+
+
 
 # FIXME: add --primers input for primers file if provided
 class RenderFigures(Component):
@@ -976,6 +990,7 @@ class RenderFigures(Component):
                  do_histograms=True,
                  mindepth=5000,
                  maxbg=0.05,
+                 dms=False,
                  **kwargs):
         self.amplicon = amplicon
         # TODO: expose the params min_depth_pass_frac, max_high_bg_frac, min_positive
@@ -997,6 +1012,8 @@ class RenderFigures(Component):
                                 parallel=False))
         self.add(StdoutNode())
         self.add(StderrNode())
+        
+        self.dms = dms
 
     def cmd(self):
         cmd = [pyexe,
@@ -1006,6 +1023,10 @@ class RenderFigures(Component):
                "--maxbg", str(self.maxbg)]
         if self.amplicon:
             cmd += ["--primers", "{primers}"]
+
+        if self.dms:
+            cmd += ["--dms"]
+
         node_names = [n.get_name() for n in self.output_nodes]
         if "profiles_fig" in node_names:
             cmd.extend(["--plot", "{profiles_fig}"])
@@ -1055,13 +1076,20 @@ class RenderMappedDepths(Component):
 
 
 class TabToShape(Component):
-    def __init__(self, **kwargs):
+    def __init__(self, dms=False, **kwargs):
         super().__init__(**kwargs)
         self.add(InputNode(name="profile",
                            parallel=False))
-        self.add(OutputNode(name="shape",
-                            parallel=False,
-                            extension="shape"))
+
+        if dms:
+            self.add(OutputNode(name="shape",
+                                parallel=False,
+                                extension="dms"))
+        else:
+            self.add(OutputNode(name="shape",
+                                parallel=False,
+                                extension="shape"))
+
         self.add(OutputNode(name="map",
                             parallel=False,
                             extension="map"))
@@ -1082,6 +1110,7 @@ class TabToShape(Component):
                "--map", "{map}",
                "--varna", "{varna}",
                "--ribosketch", "{ribosketch}"]
+
         return cmd
 
 
@@ -1103,6 +1132,7 @@ class ProfileHandler(Component):
                  counts=None,
                  norm=None,
                  amplicon=None,
+                 dms=False,
                  **kwargs):
         require_explicit_kwargs(locals())
         super().__init__(**kwargs)
@@ -1118,7 +1148,7 @@ class ProfileHandler(Component):
 
         profilenode = profilemaker.profile
         if norm:
-            normer = NormProfile(target_name=target_name)
+            normer = NormProfile(target_name=target_name, dms=dms)
             self.add(normer)
             connect(profilemaker.profile, normer.profile)
             profilenode = normer.normed
@@ -1130,14 +1160,15 @@ class ProfileHandler(Component):
         except IndexError:
             pass
 
-        tabtoshaper = TabToShape()
+        tabtoshaper = TabToShape(dms=dms)
         self.add(tabtoshaper)
         connect(profilenode, tabtoshaper.profile)
 
         renderer = RenderFigures(assoc_rna=target_name,
                                  mindepth=mindepth,
                                  maxbg=maxbg,
-                                 amplicon=amplicon)
+                                 amplicon=amplicon,
+                                 dms=dms)
         mapped_depth_renderer = RenderMappedDepths(assoc_rna=target_name,
                                                    amplicon=amplicon)
         self.add([renderer, mapped_depth_renderer])
@@ -1721,6 +1752,12 @@ class PostAlignment(Component):
         debug_out = False
         if render_mutations:
             debug_out = render_mutations
+        
+        
+        dms = False
+        if mutation_type_to_count == "dms":
+            dms = True
+
 
         for i in range(num_samples):
             sample = samples[i]
@@ -1768,12 +1805,33 @@ class PostAlignment(Component):
                                       assoc_sample=sample,
                                       per_read_histograms=per_read_histograms,
                                       separate_ambig_counts=separate_ambig_counts)
+            
 
             connect_nodes(parser.parsed_mutations, counter.mut)
             self.add(counter)
 
             counts.append(counter.mutations)
 
+
+            #if dms:
+            #    counterga = MutationCounter(name="MutationCounter_" + sample,
+            #                          target_length=target_length,
+            #                          primer_pairs=primer_pairs,
+            #                          variant_out=output_variant_counts,
+            #                          mutations_out=output_mutation_counts,
+            #                          assoc_sample=sample,
+            #                          per_read_histograms=per_read_histograms,
+            #                          separate_ambig_counts=separate_ambig_counts)
+                
+            #   connect_nodes(parser.parsed_mutations, counter.mut)
+            #   self.add(counterga)
+
+            #   counts.append(counterga.mutations)
+
+    
+
+
+            
         profilehandler = ProfileHandler(target=target,
                                         target_name=target_name,
                                         mindepth=min_depth,
@@ -1781,7 +1839,8 @@ class PostAlignment(Component):
                                         random_primer_len=random_primer_len,
                                         counts=counts,
                                         norm=norm,
-                                        amplicon=amplicon)
+                                        amplicon=amplicon,
+                                        dms=dms)
         self.add(profilehandler)
 
         # set assoc_rna property for all children

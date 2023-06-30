@@ -129,6 +129,8 @@ def commify(s):
     o = o.lstrip(',')
     return o
 
+
+
 def qc_stats(seq,
              rx_rate, bg_rate, dc_rate,
              rx_depth, bg_depth, dc_depth,
@@ -140,12 +142,17 @@ def qc_stats(seq,
              min_high_mut):
     # FIXME: set up some dummy data for common QC scenarios
     
-    print("Quality control checks:\n")
+
+    print("SHAPE mode quality control checks:\n")
 
     if rx_rate is None and bg_rate is None and dc_rate is None:
         # no coverage at all
         print("FAIL: no reads mapped to this RNA") 
-        return False
+        return False   
+    
+    # make sure a numpy
+    seq = np.array(list(seq))
+
 
     depth_mask_pass = np.full((len(rx_depth),), True, dtype=bool)
     rx_depth_pass = np.full((len(rx_depth),), True, dtype=bool)
@@ -221,7 +228,9 @@ def qc_stats(seq,
     causes_msg = msg
     printed_causes = False
 
+
     if bg_rate is not None and num_depth_pass>10:
+        
         diff = rx_rate-bg_rate
         num_positive = 0
         for i in range(len(rx_rate)):
@@ -238,6 +247,7 @@ def qc_stats(seq,
         if positive_frac >= min_positive:
             msg =  "PASS: There is a clear difference in mutation rates between\n"
             msg += "      modified and untreated samples.\n"
+            print(msg)
         else:
             overall_pass = False
             msg = "FAIL: Mutation rates do not show a clear difference between\n"
@@ -266,12 +276,9 @@ def qc_stats(seq,
         high_bg_frac = num_high_bg/float(num_depth_pass)
 
         print("High background check:")
-        msg = "{:.1f}% ({}/{}) nucleotides have high background\n"
-        msg += "mutation rates."
-        msg = msg.format(high_bg_frac*100,
-                         num_high_bg,
-                         num_depth_pass)
-        print(msg)
+        msg = "{:.1f}% ({}/{}) nucleotides have high background mutation rates."
+        print(msg.format(high_bg_frac*100, num_high_bg, num_depth_pass))
+
         if high_bg_frac <= max_high_bg:
             print("PASS: Not too many nucleotides with high background mutation rates.\n")
         else:
@@ -306,10 +313,26 @@ def qc_stats(seq,
         print(msg)
 
         if high_mut_frac >= min_high_mut:
-            if inv_high_mut_frac < min_high_mut:
+            
+            # check that reactivities are roughly similar for all nts; if not warn about DMS
+            mask = (depth_mask_pass==1) & ( (seq == 'A') | (seq == 'C') ) & np.isfinite(diff)
+            ac = np.percentile(diff[mask], 95)
+            
+            mask = (depth_mask_pass==1) & ( (seq == 'G') | (seq == 'U') ) & np.isfinite(diff)
+            gu = np.percentile(diff[mask], 95)
+
+            if ac/gu > 2:
+                overall_pass = False
+                msg = "WARNING: A/C nts are much more reactive than G/U\n"
+                msg += "         This may be a DMS experiment, in which case\n"
+                msg += "         DMS mode is recommended"
+                print(msg)
+
+            elif inv_high_mut_frac < min_high_mut:
                 msg = "PASS: The expected number of nucleotides or more are highly\n"
                 msg += "      reactive."
                 print(msg)
+
             else:
                 overall_pass = False
                 print("FAIL: modified and untreated samples might be swapped\n")
@@ -322,11 +345,205 @@ def qc_stats(seq,
 
     return overall_pass
 
+
+
+
+def qc_stats_dms(seq,
+                rx_rate, bg_rate, dc_rate,
+                rx_depth, bg_depth, dc_depth,
+                min_depth, max_bg,
+                min_depth_pass,
+                max_high_bg,
+                min_positive,
+                min_high_mut):
+    
+
+    high_mut_thresh = {'A':0.02, 'C':0.02, 'U':0.005, 'G':0.002}
+
+
+    print("\nDMS mode quality control checks:")
+    print("--------------------------------")
+    if rx_rate is None and bg_rate is None and dc_rate is None:
+        # no coverage at all
+        print("FAIL: no reads mapped to this RNA") 
+        return False
+
+    # make sure a nump
+    seq = np.array(list(seq))
+
+    if bg_rate is not None:
+        diff = rx_rate-bg_rate
+    else:
+        diff = rx_rate
+    
+    overall_pass = {}
+    
+    for nt in ('A','C','U','G'):
+     
+        print("\n***************")
+        print("*   Nt = {}    *".format(nt))
+        print("***************\n")
+
+        overall_pass[nt] = True
+
+        rx_depth_pass = np.full((len(rx_depth),), True, dtype=bool)
+        bg_depth_pass = np.full((len(rx_depth),), True, dtype=bool)
+        dc_depth_pass = np.full((len(rx_depth),), True, dtype=bool)
+
+        if rx_rate is not None:
+            rx_depth_pass = (rx_depth >= min_depth)
+        if bg_rate is not None:
+            bg_depth_pass = (bg_depth >= min_depth)
+        if dc_rate is not None:
+            dc_depth_pass = (dc_depth >= min_depth)
+        
+        overall_mask = rx_depth_pass & bg_depth_pass & dc_depth_pass & np.char.isupper(seq) & (seq==nt)
+        
+        
+        # check that sufficient number of positions are definied
+
+        num_depth_pass = sum(overall_mask)
+        total_unmasked = np.sum(np.char.isupper(seq) & (seq==nt))
+        depth_pass_frac = num_depth_pass/float(total_unmasked)
+        rx_pass_frac = sum(rx_depth_pass)/float(total_unmasked)
+        bg_pass_frac = sum(bg_depth_pass)/float(total_unmasked)
+        dc_pass_frac = sum(dc_depth_pass)/float(total_unmasked)
+        
+        print("Read depth check:")
+        msg = "{:.1f}% ({}/{}) nucleotides meet the minimum read depth of {}"
+        msg = msg.format(depth_pass_frac*100,
+                         num_depth_pass,
+                         total_unmasked,
+                         min_depth)
+        print(msg)
+        if depth_pass_frac >= min_depth_pass:
+            print("PASS\n")
+        else:
+            overall_pass[nt] = False
+            msg = "FAIL: Read depths are too low for accurate reactivity profile creation.\n"
+            problem_samples = []
+            if rx_pass_frac < min_depth_pass:
+                problem_samples.append("modified")
+            if bg_rate is not None and bg_pass_frac < min_depth_pass:
+                problem_samples.append("untreated")
+            if dc_rate is not None and dc_pass_frac < min_depth_pass:
+                problem_samples.append("denatured")
+            if len(problem_samples) == 1:
+                msg += "      The {} sample is particulary low.\n".format(problem_samples[0])
+            elif len(problem_samples) > 1:
+                msg += "      Problematic samples: "+', '.join(problem_samples)+'.\n'
+            msg += "      Check alignment stats to see the amount of target sequence present\n"
+            msg += "      in each sample. Better target enrichment or recovery and/or\n"
+            msg += "      additional sequencing could help solve this problem.\n"
+            print(msg)
+
+
+
+        if num_depth_pass < 20:
+            overall_pass[nt] = False
+            print("FAIL: Normalization unreliable due to low number of measured nucleotides!")
+            print("      Consider including another RNA as a normalization control")
+
+        # check high background positions
+        elif bg_rate is not None:
+        
+            num_high_bg = sum(bg_rate[overall_mask] > max_bg)
+            high_bg_frac = num_high_bg/float(num_depth_pass)
+
+            print("High background check:")
+            msg = "{:.1f}% ({}/{}) nucleotides have high background mutation rates (>{}) "
+            msg += "mutation rates."
+            msg = msg.format(high_bg_frac*100,
+                             num_high_bg,
+                             num_depth_pass, max_bg)
+            print(msg)
+            if high_bg_frac <= max_high_bg:
+                print("PASS: Not too many nucleotides with high background mutation rates.\n")
+            else:
+                overall_pass[nt] = False
+                msg = "FAIL: Too many nucleotides with high background mutation rates.\n"
+                msg += "      This can be caused by the presence of native modifications\n"
+                msg += "      or sequence variants.\n"
+                print(msg)
+    
+
+            num_positive = np.sum(diff[overall_mask]>0.0001)
+            positive_frac = num_positive/float(num_depth_pass)
+            print("Mutation rate check:")
+            msg = "{:.1f}% ({}/{}) nucleotides have mutation rates above background"
+            msg = msg.format(positive_frac*100,
+                             num_positive,
+                             num_depth_pass)
+            print(msg)
+            if positive_frac >= min_positive:
+                msg =  "PASS: There is a clear difference in mutation rates between\n"
+                msg += "      modified and untreated samples.\n"
+                print(msg)
+            else:
+                overall_pass[nt] = False
+                msg = "FAIL: Mutation rates do not show a clear difference between\n"
+                msg += "      modified and untreated samples.\n"
+                print(msg)
+
+        else:            
+            num_high_mut = np.sum(diff[overall_mask] > high_mut_thresh[nt])
+            num_inv_high_mut = np.sum(diff[overall_mask] < -high_mut_thresh[nt])
+            
+            high_mut_frac = num_high_mut/float(num_depth_pass)
+            inv_high_mut_frac = num_inv_high_mut/float(num_depth_pass)
+            
+            print("Number highly reactive check:")
+            msg = "{:.1f}% ({}/{}) nucleotides have high modification rates (>{})"
+            print(msg.format(high_mut_frac*100, num_high_mut, num_depth_pass, high_mut_thresh[nt]))
+
+            if high_mut_frac >= min_high_mut:
+                if inv_high_mut_frac < min_high_mut:
+                    print("PASS: The expected number of nucleotides (or more) are highly reactive")
+                else:
+                    overall_pass[nt] = False
+                    print("FAIL: modified and untreated samples might be swapped\n")
+            else:
+                overall_pass[nt] = False
+                print("FAIL:  Lower than expected reactivity")
+
+    
+    print("\n-----------------------------------------------------------------")
+
+    if (not overall_pass['U'] or not overall_pass['G']) and (overall_pass['A'] or overall_pass['C']):
+        msg = "      G and/or U FAILURE, but other reactivities may be usable\n"
+        msg += "      Possible causes:\n"
+        msg += "       - improper pH control during DMS reaction\n"
+        msg += "       - use of a different RT enzyme than MarathonRT\n"
+        msg += "       - poor reverse transcription conditions, resulting\n"
+        msg += "         in low adduct adduct read-through or detection\n"
+        msg += "       - very highly structured or protein bound RNA\n"
+        print(msg)
+
+
+    elif not (overall_pass['A'] and overall_pass['C']):
+        msg = "      A and/or C FAILURE: Possible causes:\n"
+        msg += "       - low sequencing depth\n"
+        msg += "       - DNA contamination\n"
+        msg += "       - poor mixing of chemical reagents and RNA and/or poor\n"
+        msg += "         reagent diffusion (if modifying in cells), resulting\n"
+        msg += "         in low modification rates\n"
+        msg += "       - expired reagents, resulting in low modification rates\n"
+        msg += "       - poor reverse transcription conditions, resulting in\n"
+        msg += "         low adduct read-through\n"
+        msg += "       - extremely highly structured RNA\n"
+        print(msg)
+
+
+    return all(overall_pass.values())
+
+
+
+
 def render_profiles(num, seq, reactivity, stderr,
                     rx_rates, bg_rates, dc_rates,
                     rx_depth, bg_depth, dc_depth,
                     rx_simple_depth, bg_simple_depth, dc_simple_depth,
-                    fileout, name, qc_pass):
+                    fileout, name, qc_pass, dms=False):
     # FIXME: this is fairly ugly code - should at least break each panel into a separate func
 
     if rx_rates is None and bg_rates is None and dc_rates is None:
@@ -360,6 +577,7 @@ def render_profiles(num, seq, reactivity, stderr,
     if reactivity is not None:
         reactivity = np.append(0, reactivity)
         stderr = np.append(0, stderr)
+
     rx_depth = np.append(0, rx_depth)
     bg_depth = np.append(0, bg_depth)
     dc_depth = np.append(0, dc_depth)
@@ -374,8 +592,13 @@ def render_profiles(num, seq, reactivity, stderr,
     dc_err = np.append(0, dc_err)
 
     if reactivity is not None:
-        orange_thresh = 0.4
-        red_thresh = 0.85
+
+        if dms:
+            orange_thresh = 0.15
+            red_thresh = 0.4
+        else:
+            orange_thresh = 0.4
+            red_thresh = 0.85
 
         gray_vals = []
         gray_nums = []
@@ -406,8 +629,12 @@ def render_profiles(num, seq, reactivity, stderr,
                 red_vals.append(reactivity[i])
                 red_nums.append(num[i])
                 red_errs.append(stderr[i])
-
-    yMin, ymax = (-0.5, 4)
+    
+    if dms:
+        yMin, ymax = (-0.1, 1.5)
+    else:
+        yMin, ymax = (-0.5, 4)
+    
     left_inches = 0.9
     right_inches = 0.4
     sp_width = len(num)*0.032
@@ -444,7 +671,6 @@ def render_profiles(num, seq, reactivity, stderr,
                      width=1.05,color="red",edgecolor="red",linewidth=0.0,
                      yerr=red_errs,ecolor=near_black,capsize=1)
 
-    #print("title: "+name)
     ax1title = ax1.set_title(name, horizontalalignment="left", fontsize=16)
     x,y = ax1title.get_position()
     ax1title.set_position((0,y))
@@ -452,12 +678,24 @@ def render_profiles(num, seq, reactivity, stderr,
     ax1.set_xlim(1,len(num))
     #ax1.set_yticks(fontsize=9)
 
+    yticks=ax1.get_yticks()
+    if dms:
+      yticks = np.linspace(0, 1.4, 8)
+      yticks = [round(tick, 1) for tick in yticks]
+      ax1.set_yticks(yticks)
+    else:
+      yticks = np.linspace(-.5, 4, 10)
+      ax1.set_yticks(yticks)
+
+    
+
     if not qc_pass:
         msg = "Note: possible data quality issue - see log file"
         return_flag = False
         if no_mapped:
             msg = "ERROR: no reads mapped to this RNA"
             return_flag = True
+
         txt = plt.text(30,573,
                  msg,
                  ha='left', va='top',
@@ -480,17 +718,21 @@ def render_profiles(num, seq, reactivity, stderr,
     for loc, spine in ax1.spines.items():
         if loc == 'bottom':
             spine.set_position(('outward', 6))  # move outward (down) 6 pts
-            spine.set_smart_bounds(True)
+            #spine.set_smart_bounds(True)
     for loc, spine in ax1.spines.items():
         if loc == 'left':
             spine.set_position(('outward', 6))  # move outward (left) 6 pts
-            spine.set_smart_bounds(True)
+            #spine.set_smart_bounds(True)
 
     # need to add labels after moving spines, otherwise they will disappear
     ax1xlabel = ax1.set_xlabel("Nucleotide", horizontalalignment="left", fontsize=14, labelpad=0)
     x,y = ax1xlabel.get_position()
     ax1xlabel.set_position((0,y))
-    ax1ylabel = ax1.set_ylabel("Shape Reactivity", horizontalalignment="left", fontsize=14)
+    
+    if dms:
+        ax1ylabel = ax1.set_ylabel("DMS Reactivity", horizontalalignment="left", fontsize=14)
+    else:
+        ax1ylabel = ax1.set_ylabel("Shape Reactivity", horizontalalignment="left", fontsize=14)
     x,y = ax1ylabel.get_position()
     ax1ylabel.set_position((x,0))
 
@@ -509,15 +751,24 @@ def render_profiles(num, seq, reactivity, stderr,
         ptA2 = inv.transform_point(ptA)
         ptB2 = inv.transform_point(ptB)
         rectW = ptB2[0]-ptA2[0]
-        rect = Rectangle((rectX,-0.5), rectW, orange_thresh+0.5, facecolor="black", edgecolor="none")
-        ax1.add_patch(rect)
-        rect.set_clip_on(False)
-        rect = Rectangle((rectX,orange_thresh), rectW, red_thresh-orange_thresh, facecolor="orange", edgecolor="none")
-        ax1.add_patch(rect)
-        rect.set_clip_on(False)
-        rect = Rectangle((rectX,red_thresh), rectW, 4-red_thresh, facecolor="red", edgecolor="none")
-        ax1.add_patch(rect)
-        rect.set_clip_on(False)
+        
+        if dms:
+            rect1 = Rectangle((rectX,-0.1), rectW, orange_thresh-yMin, facecolor="black", edgecolor="none")
+            rect2 = Rectangle((rectX,orange_thresh), rectW, red_thresh-orange_thresh, facecolor="orange", edgecolor="none")
+            #rect3 = Rectangle((rectX,red_thresh), rectW, 2-red_thresh, facecolor="red", edgecolor="none")
+            rect3 = Rectangle((rectX,red_thresh), rectW, 1, facecolor="red", edgecolor="none")
+        else:
+            rect1 = Rectangle((rectX,-0.5), rectW, orange_thresh+0.5, facecolor="black", edgecolor="none")
+            rect2 = Rectangle((rectX,orange_thresh), rectW, red_thresh-orange_thresh, facecolor="orange", edgecolor="none")
+            rect3 = Rectangle((rectX,red_thresh), rectW, 4-red_thresh, facecolor="red", edgecolor="none")
+        
+        ax1.add_patch(rect1)
+        rect1.set_clip_on(False)
+        ax1.add_patch(rect2)
+        rect2.set_clip_on(False)
+        ax1.add_patch(rect3)
+        rect3.set_clip_on(False)
+
 
     ax1.get_xaxis().tick_bottom()   # remove unneeded ticks
     ax1.get_yaxis().tick_left()
@@ -525,7 +776,7 @@ def render_profiles(num, seq, reactivity, stderr,
     ax1.tick_params(axis='y',which='minor',left='off')
     #ax1.tick_params(axis='x',which='minor')
 
-    ax1.minorticks_on()
+    #ax1.minorticks_on()
 
     yticks = ax1.get_yticks()
     stripped_ticks = [str(val).rstrip('0').rstrip('.') for val in yticks]
@@ -560,7 +811,13 @@ def render_profiles(num, seq, reactivity, stderr,
             col = color_dict[nuc.upper()]
         else:
             col = "black"
-        ax1.annotate(nuc, xy=(i+1, -0.67),fontproperties=font_prop,color=col,annotation_clip=False, horizontalalignment="center")
+
+        if dms:
+            ax1.annotate(nuc, xy=(i+1, yMin-0.08),fontproperties=font_prop,color=col,annotation_clip=False, horizontalalignment="center")
+            #ax2.annotate(nuc, xy=(i+1, -0.1),fontproperties=font_prop,color=col,annotation_clip=False, horizontalalignment="center")
+        else:
+            ax1.annotate(nuc, xy=(i+1, -0.67),fontproperties=font_prop,color=col,annotation_clip=False, horizontalalignment="center")
+
 
     handles = []
     h, = ax2.plot(num, rx_simple_depth, linewidth = 1.5, color=rx_color, alpha=1.0)
@@ -588,7 +845,7 @@ def render_profiles(num, seq, reactivity, stderr,
     ax2.get_xaxis().tick_bottom()   # remove unneeded ticks
     ax2.get_yaxis().tick_left()
 
-    ax2.minorticks_on()
+    #ax2.minorticks_on()
     ax2.tick_params(axis='y',which='minor',left='off')
     #ax2.tick_params(axis='x',which='minor')
 
@@ -647,7 +904,11 @@ def render_profiles(num, seq, reactivity, stderr,
     ax3xlabel = ax3.set_xlabel("Nucleotide", horizontalalignment="left", fontsize=14, labelpad=0)
     x,y = ax3xlabel.get_position()
     ax3xlabel.set_position((0,y))
-    ax3ylabel = ax3.set_ylabel("Mutation rate (%)", horizontalalignment="left", fontsize=14)
+
+    if dms:
+        ax3ylabel = ax3.set_ylabel("Mutation rate", horizontalalignment="left", fontsize=14)
+    else:
+        ax3ylabel = ax3.set_ylabel("Mutation rate (%)", horizontalalignment="left", fontsize=14)
     x,y = ax3ylabel.get_position()
     ax3ylabel.set_position((x,0))
 
@@ -660,17 +921,24 @@ def render_profiles(num, seq, reactivity, stderr,
     ax3.legend(legend_labels, loc=2, borderpad=0.8, handletextpad=0.2, framealpha=0.75)
     ax3.set_xlim((1,len(rx_rates)))
     ax3.set_ylim((0,ymax))
+    if dms and False:
+        ax3.set_ylim((1e-4, max(max(rx_rates), max(bg_rates))))
+        ax3.set_yscale('log')
 
     ax3.spines["right"].set_visible(False)
     ax3.spines["top"].set_visible(False)
     ax3.get_xaxis().tick_bottom()   # remove unneeded ticks
     ax3.get_yaxis().tick_left()
 
-    ax3.minorticks_on()
+    #ax3.minorticks_on()
     ax3.tick_params(axis='y',which='minor',left='off')
 
-    ticks = [x*100 for x in ax3.get_yticks()]
-    ax3.set_yticklabels([str(val).rstrip('0').rstrip('.') for val in ticks])
+    ax3.set_yticks(np.linspace(0, .16, num = 9))
+    
+    if not dms:
+        ticks = [x*100 for x in ax3.get_yticks()]
+        ticks = [int(tick) for tick in ticks]
+        ax3.set_yticklabels([str(val).rstrip('0').rstrip('.') for val in ticks])
 
     for line in ax3.get_yticklines():
         line.set_markersize(6)
@@ -797,6 +1065,14 @@ def write_histograms(shape, stderr,
         if return_flag:
             plt.savefig(fileout)
             return
+ 
+ 
+    num_bins = 30
+    # use fewer bins for short RNAs
+    if len(rx_depth)<500:
+        num_bins = 10
+    int_bins = range(0,num_bins+1,1)
+    
 
     ptiles = []
     if rx_rate is not None and len(rx_rate)>10:
@@ -806,12 +1082,6 @@ def write_histograms(shape, stderr,
     if dc_rate is not None and len(dc_rate)>10:
         ptiles.append(percentile(dc_rate, 90.0))
     max90percentile = max(ptiles)
-
-    num_bins = 30
-    # use fewer bins for short RNAs
-    if len(rx_depth)<500:
-        num_bins = 10
-    int_bins = range(0,num_bins+1,1)
 
     # adjust rate axis for higher mutation rates (e.g. from DMS or other highly mutagenic reagents)
     bin_max = 0.03
@@ -1015,9 +1285,229 @@ def write_histograms(shape, stderr,
 
     plt.savefig(fileout)
 
+ 
+def write_histograms_dms(dms, stderr,
+                         min_depth, max_bg,
+                         seq,
+                         rx_rate, bg_rate, dc_rate,
+                         rx_depth, bg_depth, dc_depth,
+                         fileout, name, qc_pass):
     
+    
+    seq = np.array(list(seq))
+
+    tlabel_size = 10
+
+    legend_labels = []
+    if rx_rate is not None:
+        legend_labels.append("Modified")
+    if bg_rate is not None:
+        legend_labels.append("Untreated")
+    if dc_rate is not None:
+        legend_labels.append("Denatured")
+    
+    if rx_rate is not None and bg_rate is not None:
+        mkdiffplot=True
+        fig, axes = plt.subplots(nrows=4, ncols=4)
+        fig.set_size_inches(10,10)
+    else:
+        mkdiffplot=False
+        fig, axes = plt.subplots(nrows=4, ncols=3)
+        fig.set_size_inches(7.5,10)
+
+
+    fig.subplots_adjust(bottom=0.1, top=0.85, wspace=0.25, hspace=0.45, left=0.08, right=0.95)
+
+    if len(name)<20:
+        title = plt.suptitle(name,fontsize=18,horizontalalignment="left", x=0.02)
+    if not qc_pass:
+        if len(name)<20:
+            offset = len(name)*12
+        else:
+            offset = 0
+        msg = "Note: possible data quality issue - see log file"
+        return_flag = False        
+        if bg_rate is None and rx_rate is None and dc_rate is None:
+            return_flag = True
+            msg = "ERROR: no reads mapped to this RNA"
+        txt = plt.text(0.1, 0.95,
+                 msg,
+                 ha='left', va='top',
+                 fontsize=16, color='red',
+                 transform=fig.transFigure)
+
+        if return_flag:
+            plt.savefig(fileout)
+            return
+
+
+    def _plothist_(ax, mask, rx, bg, dc, nbins):
+
+        minval, maxval = 1, 0
+        
+        for data in (rx, bg, dc):
+            
+            if data is None:
+                continue
+
+            m = min(data[mask])
+            if m < minval:
+                minval=m
+            m = 1.2*np.percentile(data[mask], 95)
+            if m>maxval:
+                maxval=m
+            
+        bins = np.linspace(minval,maxval,nbins)
+        inc = 0
+        if rx is not None:
+            ax.hist(rx[mask], bins=bins, histtype='step',lw=1.5,color=rx_color, zorder=4)
+            if max(rx[mask]) > maxval:
+                plt.text(1.0, 0.3, 'max={:.3f} not shown'.format(max(rx[mask])), transform=ax.transAxes, fontsize=6, color=rx_color, ha='right', style='italic')
+                inc+=0.1
+        if bg is not None and sum(bg>0) > 0:
+            ax.hist(bg[mask], bins=bins, histtype='step',lw=1.5,color=bg_color, zorder=3)
+            if max(bg[mask]) > maxval:
+                plt.text(1.0, 0.3-inc, 'max={:.3f} not shown'.format(max(bg[mask])), transform=ax.transAxes, fontsize=6, color=bg_color, ha='right', style='italic')
+                inc+=0.1
+        if dc is not None and sum(dc>0) > 0:
+            ax.hist(dc[mask], bins=bins, histtype='step',lw=1.5,color=dc_color, zorder=2)
+            if max(dc[mask]) > maxval:
+                plt.text(1.0, 0.3-inc, 'max={:.3f} not shown'.format(max(dc[mask])), transform=ax.transAxes, fontsize=6, color=dc_color, ha='right', style='italic')
+
+
+    for ntindex, nt in enumerate(['A','C','U','G']):
+        
+        mask = (seq == nt)
+        for rate in (rx_rate, bg_rate, dc_rate):
+            if rate is not None:
+                mask = mask & np.isfinite(rate)
+
+
+        if mkdiffplot:
+            ax1, ax2, ax3, ax4 = axes[ntindex,:]
+        else:
+            ax1, ax3, ax4 = axes[ntindex,:]
+
+
+        plt.text(-0.3,1.0, nt, transform=ax1.transAxes, fontsize=20, weight='bold')
+
+        ax1.get_xaxis().tick_bottom() 
+        ax1.get_yaxis().tick_left()
+
+        ax1.spines["right"].set_visible(False)
+        ax1.spines["top"].set_visible(False)
+        for line in ax1.get_yticklines() + ax1.get_xticklines():
+            line.set_markersize(7)
+            line.set_markeredgewidth(1)
+
+        ax1.tick_params(axis='both', labelsize=tlabel_size)
+
+        _plothist_(ax1, mask, rx_rate, bg_rate, dc_rate, 20)
+        
+
+        ax1.set_xticklabels(['{:.3g}'.format(x) for x in ax1.get_xticks()], rotation = 90)
+        
+        if nt=='A':
+            leg = ax1.legend(legend_labels, framealpha=0.75, fontsize=8, markerscale=0.5)
+            for l in leg.get_lines():
+                l.set_linewidth(1.5)
+                l.set_alpha(1.0)
+
+        # plot the reactivity difference
+        if mkdiffplot:
+            diff = rx_rate-bg_rate
+            p95 = 1.2*np.percentile(diff[mask], 95)
+            ax2.hist(diff[mask], bins=20, range=(min(diff[mask]),p95), histtype='step', lw=1.5, color='black')
+            ax2.spines["right"].set_visible(False)
+            ax2.spines["top"].set_visible(False)
+            ax2.tick_params(axis='both', labelsize=tlabel_size)
+            ax2.get_xaxis().tick_bottom()
+            ax2.get_yaxis().tick_left()
+
+            ax2.set_xticklabels(['{:.3g}'.format(x) for x in ax2.get_xticks()], rotation = 90)
+            
+            if max(diff[mask]) > p95:
+                plt.text(1.0, 0.3, 'max={:.3f} not shown'.format(max(diff[mask])), transform=ax2.transAxes, fontsize=6, color='k', ha='right', style='italic')
+
+
+        xticks = np.linspace(-0.4,1.6,11)
+        xlabels = ["{:.0f}".format(val) if val==int(val) else "{:.1f}".format(val) for val in xticks]
+        
+        ax3.tick_params(axis='both', labelsize=tlabel_size)
+        ax3.set_xticks(xticks)
+        ax3.set_xticklabels(xlabels, rotation=90)
+
+        if dms is not None:
+            finmask = mask & np.isfinite(dms)
+            if sum(finmask) > 0:
+                d = ax3.hist(dms[finmask], bins=20, range=(-0.4,1.6), histtype='step', lw=1.5, color="black", zorder=4)
+                
+                # plot the normalization factor
+                idx = np.argmax(dms[finmask])
+                if mkdiffplot:
+                    nfac = diff[finmask][idx]/dms[finmask][idx]
+                    ax2.axvline(x=nfac, ls='--', lw=1.5, color='0.5')
+                    plt.text(1.0,1.0, 'NormFac={:.3g}'.format(nfac), transform=ax2.transAxes, fontsize=8, color='0.5', ha='right')
+                else:
+                    nfac = rx_rate[finmask][idx]/dms[finmask][idx]
+                    ax1.axvline(x=nfac, ls='--', lw=1.5, color='0.5')
+                    plt.text(1.0,1.0, 'NormFac={:.3g}'.format(nfac), transform=ax1.transAxes, fontsize=8, color='0.5', ha='right')
+
+
+        ax3.get_xaxis().tick_bottom()   # remove unneeded ticks
+        ax3.get_yaxis().tick_left()
+
+        ax3.spines["right"].set_visible(False)
+        ax3.spines["top"].set_visible(False)
+        for line in ax3.get_yticklines() + ax3.get_xticklines():
+            line.set_markersize(7)
+            line.set_markeredgewidth(1)
+
+
+        _plothist_(ax4, mask, rx_depth, bg_depth, dc_depth, 20)
+
+        ax4.get_xaxis().tick_bottom()   # remove unneeded ticks
+        ax4.get_yaxis().tick_left()
+        ax4.tick_params(axis='both', labelsize=tlabel_size)
+
+        xticks = [int(x) for x in ax4.get_xticks()]
+        formatted_ticks = []
+        for val in xticks:
+            formatted_ticks.append(metric_abbreviate(val))
+        ax4.set_xticklabels(formatted_ticks, rotation=90)
+
+        ax4.spines["right"].set_visible(False)
+        ax4.spines["top"].set_visible(False)
+
+        for line in ax4.get_yticklines() + ax4.get_xticklines():
+            line.set_markersize(7)
+            line.set_markeredgewidth(1)
+
+        
+        
+        ax1.set_ylabel("Nucleotide count",fontsize=11)
+        
+        if ntindex==0:
+            ax1.set_title('Mutation rates', x=0.5,y=1.08)
+            ax3.set_title("Normalized\nreactivity distribution", x=0.5,y=1.08)
+            ax4.set_title("Read depths", x=0.5,y=1.08)
+            if mkdiffplot:
+                ax2.set_title("Background corrected\nrate distribution", x=0.5, y=1.08)
+
+        if ntindex==3:
+            ax1.set_xlabel("Mutation rate", fontsize=11)
+            ax3.set_xlabel("Normalized reactivity", fontsize=11)
+            ax4.set_xlabel("Effective read depth", fontsize=11)
+            if mkdiffplot:
+                ax2.set_xlabel("Moodified - Untreated Rate", fontsize=11)
+
+
+    plt.savefig(fileout)
+
+
+
 def load_tab(filename):
-    f = open(filename, "rU")
+    f = open(filename)
 
     # do one pass to determine array length
     # TODO: might actually be faster to just resize array in memory and read in one pass
@@ -1154,8 +1644,12 @@ if __name__=="__main__":
 
     h = "Amplicon primer pair sequences and locations (to exclude from mutation rate histogram plots)"
     parser.add_argument("--primers", help=h, type=str)
-
+    
+    h = "Reactivities are DMS rather than default SHAPE"
+    parser.add_argument("--dms", action="store_true", default=False, help=h)
+    
     p = parser.parse_args(sys.argv[1:])
+
 
     primers = []
     if p.primers is not None and p.primers != "":
@@ -1198,20 +1692,37 @@ if __name__=="__main__":
     for i in range(len(masked)):
         if masked[i]:
             masked_sequence[i] = masked_sequence[i].lower()
+    
+    
+    if p.dms:
+        qc_pass = qc_stats_dms(masked_sequence,
+                               d["Modified_rate"],
+                               d["Untreated_rate"],
+                               d["Denatured_rate"],
+                               d["Modified_effective_depth"],
+                               d["Untreated_effective_depth"],
+                               d["Denatured_effective_depth"],
+                               p.mindepth, p.maxbg,
+                               p.min_depth_pass,
+                               p.max_high_bg,
+                               p.min_positive,
+                               p.min_high_mut)
 
-    qc_pass = qc_stats(masked_sequence,
-                       d["Modified_rate"],
-                       d["Untreated_rate"],
-                       d["Denatured_rate"],
-                       d["Modified_effective_depth"],
-                       d["Untreated_effective_depth"],
-                       d["Denatured_effective_depth"],
-                       p.mindepth, p.maxbg,
-                       p.min_depth_pass,
-                       p.max_high_bg,
-                       p.min_positive,
-                       p.high_mut_thresh,
-                       p.min_high_mut)
+
+    else:
+        qc_pass = qc_stats(masked_sequence,
+                           d["Modified_rate"],
+                           d["Untreated_rate"],
+                           d["Denatured_rate"],
+                           d["Modified_effective_depth"],
+                           d["Untreated_effective_depth"],
+                           d["Denatured_effective_depth"],
+                           p.mindepth, p.maxbg,
+                           p.min_depth_pass,
+                           p.max_high_bg,
+                           p.min_positive,
+                           p.high_mut_thresh,
+                           p.min_high_mut)
 
     if p.plot is not None and (d["Modified_rate"] is None or 
                                len(d["Modified_rate"]) <= p.maxlen):
@@ -1220,13 +1731,27 @@ if __name__=="__main__":
             d["Modified_rate"], d["Untreated_rate"], d["Denatured_rate"],
             d["Modified_effective_depth"], d["Untreated_effective_depth"], d["Denatured_effective_depth"],
             d["Modified_read_depth"], d["Untreated_read_depth"], d["Denatured_read_depth"],
-            p.plot, title, qc_pass)
+            p.plot, title, qc_pass, dms=p.dms)
 
-    if p.hist is not None:
+    if p.hist is not None and not p.dms:
         write_histograms(
             profile, stderr,
             p.mindepth, p.maxbg,
-            d["Sequence"],
+            masked_sequence,
             d["Modified_rate"], d["Untreated_rate"], d["Denatured_rate"],
             d["Modified_effective_depth"], d["Untreated_effective_depth"], d["Denatured_effective_depth"],
             p.hist, title, qc_pass)
+
+    elif p.hist is not None and p.dms:
+        write_histograms_dms(
+            profile, stderr,
+            p.mindepth, p.maxbg,
+            masked_sequence,
+            d["Modified_rate"], d["Untreated_rate"], d["Denatured_rate"],
+            d["Modified_effective_depth"], d["Untreated_effective_depth"], d["Denatured_effective_depth"],
+            p.hist, title, qc_pass)
+
+
+
+
+
