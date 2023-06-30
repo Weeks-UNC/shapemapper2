@@ -61,7 +61,7 @@ ShapeMapper will only run on 64-bit Linux systems (Mac and Windows are not curre
   This should take about 5-15 minutes. (optional) 
 
 - Alternatively, you can build ShapeMapper if the provided binaries do not run on your platform. 
-  Building is relatively straightforward using conda. See <a href="https://github.com/Weeks-UNC/shapemapper2/blob/v22-release/docs/building.md">building</a>.
+  Building is relatively straightforward using conda. See <a href="https://github.com/Weeks-UNC/shapemapper2/blob/master/docs/building.md">building</a>.
 
 <!-- #### -->
 
@@ -396,6 +396,7 @@ Smola MJ, Rice GM, Busan S, Siegfried NA, Weeks KM. Selective 2'-hydroxyl acylat
 
 #### For DMS-specific analyses, please cite:
 
-Mitchell D, Cotter J, Saleem I, Mustoe AM. In prep.
+David Mitchell, III et al, Mutation signature filtering enables high-fidelity RNA structure probing at all four nucleobases with DMS, Nucleic Acids Research, 2023;, gkad522, 
+[link](https://doi.org/10.1093/nar/gkad522)
 
 &nbsp;&nbsp;&nbsp;&nbsp;
