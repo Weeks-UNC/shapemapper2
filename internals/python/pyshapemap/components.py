@@ -1966,7 +1966,9 @@ class CorrectSequence(Component):
             self.add(appender.appended, alias="corrected")
 
         else:
-            parser = MutationParser(min_mapq=min_mapq,
+            parser = MutationParser(name="MutationParser",
+                                    assoc_rna=target_names[0],
+                                    min_mapq=min_mapq,
                                     min_qual=min_qual_to_count,
                                     random_primer_len=random_primer_len,
                                     maxins=maxins,
@@ -1976,7 +1978,9 @@ class CorrectSequence(Component):
                                     require_reverse_primer_mapped=require_reverse_primer_mapped,
                                     trim_primers=trim_primers,
                                     )
-            counter = MutationCounter(variant_out=True,
+            counter = MutationCounter(name="MutationCounter",
+                                      assoc_rna=target_names[0],
+                                      variant_out=True,
                                       mutations_out=False,
                                       target_length=target_lengths[0])
             connect(sample.aligned, parser.input)
@@ -1984,7 +1988,9 @@ class CorrectSequence(Component):
             self.add([parser,
                       counter])
 
-            sequencefixer = SequenceCorrector(mindepth=min_seq_depth,
+            sequencefixer = SequenceCorrector(name="MutationParser",
+                                              assoc_rna=target_names[0],
+                                              mindepth=min_seq_depth,
                                               minfreq=min_freq)  # FIXME: keep param names consistent across codebase
             self.add(sequencefixer)
             connect(prep.target.input_node, sequencefixer.target)
