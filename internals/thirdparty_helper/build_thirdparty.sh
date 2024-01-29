@@ -8,7 +8,7 @@ eval "$(conda shell.bash hook)" #Shell configuration work around so conda activa
 # Finds absolute path of shapemapper directory
 
 # Solution found on stack overflow to find directory name if its a slurm job
-if [ -n $SLURM_JOB_ID ];  then
+if [ -n "$SLURM_JOB_ID" ];  then
    # check the original location through scontrol and $SLURM_JOB_ID
    BASE_DIR=$(scontrol show job $SLURM_JOBID | awk -F= '/Command=/{print $2}')
    BASE_DIR=$( dirname $( dirname $( dirname $BASE_DIR )))
@@ -18,10 +18,8 @@ else
    #SCRIPT_PATH=$(realpath $0)
 fi
 
-echo "Base dir: $BASE_DIR"
-
 ## Writes output to a log file
-##exec &> >(tee "$BASE_DIR/internals/lucas_build_thirdparty.log")
+##exec &> >(tee "$BASE_DIR/internals/build_thirdparty.log")
 
 unset PYTHONPATH 
 CONDA_PATH=${BASE_DIR}/internals/thirdparty/miniconda
@@ -124,4 +122,3 @@ which python3.9
 python3.9 --version
 which gs
 gs --version
-
