@@ -143,7 +143,7 @@ namespace read_trimmer {
             block[k] = line;
             k++;
             if (k > 3) {
-                if (block[0].substr(0, 1) != "@" or block[2] != "+") {
+                if (block[0].substr(0, 1) != "@" or block[2].substr(0, 1) != "+") {
                     throw std::runtime_error("ERROR: Input file " + filename + " does not appear FASTQ formatted.");
                 }
             
