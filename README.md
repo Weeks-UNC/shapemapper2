@@ -63,7 +63,7 @@ ShapeMapper will only run on 64-bit Linux systems (Mac and Windows are not curre
 - Occassionally a single module failure detection test may fail. We attribute this error message to idiosyncracies in computational environment as opposed to an issue with shapemapper. This error message may be safely ignored.
 
 - Alternatively, you can build ShapeMapper if the provided binaries do not run on your platform. 
-  Building is relatively straightforward using conda. See <a href="https://github.com/Weeks-UNC/shapemapper2/blob/v23-release/docs/building.md">building</a>.
+  Building is relatively straightforward using conda. See <a href="docs/building.md">building</a>.
 
 <!-- #### -->
 
