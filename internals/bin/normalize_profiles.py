@@ -121,29 +121,41 @@ def find_boxplot_factor(array):
     return norm_factor_dict
 
 
-def find_pernt_factor(sequence, profile):
+def find_pernt_factor(sequence, profile, threshold, dms=False):
     """This function performs per-nt reactivity normalization that is slightly different than boxplot normalization"""
     
     norm_factor_dict = {}
-
-    for n in ('A','C','U','G'):
+    for n in ('A','C','U','G' ):
 
         mask = (sequence == n) & np.isfinite(profile)
-        
         x = profile[mask]
-        if x.shape[0] < 10:
+        tempflag = False
+        
+        #Old threshold
+        #if x.shape[0] < 20:
+        if x.shape[0] < threshold:
             s = "Error: sequence contains too few "+n+" nucleotides (={})".format(x.shape[0])
             s += " with quality reactivity information for"
-            s += " effective per-nt normalization factor calculation"
+            s += " effective per-nt normalization factor calculation."
+            s += " This means render figures will not render DMS reactivity"
+            s += " because there are no normalized reactivities."
+            s += " The current quality reactivity threshold is {}. This may be changed with".format(threshold)
+            s += " --pernt-norm-factor-threshold."
             raise NormError(s)
 
-        else:
+        elif dms == False:
             bnds = np.percentile(x, [90., 95.])
             pmask = (x >= bnds[0]) & (x<bnds[1])
             normset = x[pmask]
             
             # compute norm standard way
             n1 = np.mean(normset)
+            # Sometimes the 90th and 95th percentile are the same
+            # value due to the way the data is distributed.
+            # This avoids errors stemming from the resulting 
+            # NaN value.
+            if np.isnan(n1):
+                n1 = 0
             
             try:
                 # compute the norm only considereing reactive nts
@@ -152,31 +164,93 @@ def find_pernt_factor(sequence, profile):
                 n2 = 0
 
             norm_factor_dict[n] = max(n1, n2)       
-    
+
+        else: 
+           norm_factor_dict[n] = np.percentile(x, 75)
+
+           
+
+           if n == 'G':
+                
+                g_pur = []
+                g_pyr = []
+                for v,i in enumerate(profile):
+                    
+                    if np.isfinite(i) and sequence[v] == 'G':
+                        
+                        if v + 1 < len(profile):
+                            
+                            if sequence[v + 1] == 'G' or sequence[v + 1] == 'A' :
+                                
+                                g_pur.append(i)
+                            elif sequence[v + 1] == 'C' or sequence[v + 1] == 'U':
+                                
+                                g_pyr.append(i)
+                
+
+                #Pooling functionality. If quantity of Gs is too low, necessary to pool them together
+                #for statistical power. 
+                if len(g_pyr) < 15 or len(g_pur) < 15:
+                  g_pyr = [x * .65 for x in g_pyr]
+                  g_pur = g_pyr + g_pur
+                  g_pyr = g_pur
+                  gpur_nfac = np.percentile(g_pur, 75)
+                  gpyr_nfac = np.percentile(g_pyr, 75) / .65
+
+                else:
+                  gpur_nfac = np.percentile(g_pur, 75)
+                  gpyr_nfac = np.percentile(g_pyr, 75)
+
+                norm_factor_dict["GPUR"] = gpur_nfac
+                norm_factor_dict['GPYR'] = gpyr_nfac
+
+
 
     # perform quality checks; if signals are too low, set to nan
-    for n in norm_factor_dict:
-        if norm_factor_dict[n] < 0.002:
-            print('Signal for {} = {:.3f} is below acceptable level. All {} nts ignored'.format(n, norm_factor_dict[n], n))
+    if dms: # If normalizing N7 data, ACU irrelevant intuitively. Do not need to notify users. Additionally, GPUR and GPYR QC is located elsewhere.
+        for n in "ACU":
             norm_factor_dict[n] = np.nan
+    else:
+        for n in norm_factor_dict:
+            if norm_factor_dict[n] < 0.002:
+                print('Signal for {} = {:.3f} is below acceptable level. All {} nts ignored'.format(n, norm_factor_dict[n], n))
+                norm_factor_dict[n] = np.nan
+    
 
     return norm_factor_dict   
     
 
 
-def calc_norm_factor(sequences, profiles, pernt=False):
+def calc_norm_factor(sequences, profiles, threshold, pernt=False, dms=False):
     
     combined_sequence = np.hstack(sequences)
     combined_profile = np.hstack(profiles)
 
     if pernt:
-        return find_pernt_factor(combined_sequence, combined_profile)
+        return find_pernt_factor(combined_sequence, combined_profile, threshold, dms)
     else:
         return find_boxplot_factor(combined_profile)
 
 
-def normalize_profile(sequence, profile, stderrs, norm_factor):
-    
+def normalize_profile(sequence, profile, stderrs, norm_factor,keepnan=False, dmsrun = False, inpfile = None, ignore_low_n7 = False):
+    message = None
+
+    if dmsrun:
+       message = ""
+       message += n7_quality_check(norm_factor, ignore_low_n7)
+       inpfile = inpfile[0]
+       if "/" in inpfile:
+           splfile = inpfile.split("/")
+           prefix = "/".join(splfile[0:-1])
+           suffix = splfile[-1]
+           temp_file_name = prefix + "/." + suffix + "_n7message.txt"
+       else:
+           temp_file_name = "." + inpfile + "_n7message.txt"
+       n7file = open(temp_file_name, "w")
+       n7file.write(message + "\n")
+       n7file.close()
+
+
     norm_profile = np.empty(profile.shape)
     norm_stderrs = np.empty(profile.shape)
     norm_profile[:] = np.nan
@@ -186,13 +260,43 @@ def normalize_profile(sequence, profile, stderrs, norm_factor):
         n = sequence[i]
         
         if n in norm_factor and np.isfinite(norm_factor[n]):
-            norm_profile[i] = profile[i]/norm_factor[n]
-            norm_stderrs[i] = stderrs[i]/norm_factor[n]
+            if not dmsrun:
+               norm_profile[i] = profile[i]/norm_factor[n]
+               norm_stderrs[i] = stderrs[i]/norm_factor[n]
+            else:
+               #Fixes issue of negative values in normalized columns 
+               if i + 1 < len(profile):
+                   if profile[i] < 0 and keepnan:
+                       norm_profile[i] = 3.32
+                       norm_stderrs[i] = 3.32
+                       
+                   elif sequence[i + 1] == 'A' or sequence[i + 1] == 'G':
+                   
+                       norm_profile[i] = norm_factor['GPUR']/profile[i]
+                       norm_stderrs[i] = norm_factor['GPUR']/stderrs[i]
+
+               
+                   else:
+                   
+                       norm_profile[i] = norm_factor['GPYR']/profile[i]
+                       norm_stderrs[i] = norm_factor['GPYR']/stderrs[i]
+               else:
+                    norm_profile[i] = np.nan
+                    norm_stderrs[i] = np.nan
+
         else:
             norm_profile[i] = np.nan
             norm_stderrs[i] = np.nan
 
-    return norm_profile, norm_stderrs
+    norm_profile[np.logical_not(np.isfinite(norm_profile))] = np.nan # Remove inf values
+    norm_stderrs[np.logical_not(np.isfinite(norm_stderrs))] = np.nan # Remove inf values
+
+    if dmsrun: # Log scale normalized values if N7
+        norm_profile = np.log2(norm_profile)
+        norm_stderrs = np.log2(norm_stderrs)
+        return norm_profile, norm_stderrs
+    else:
+        return norm_profile, norm_stderrs
 
 
 
@@ -313,6 +417,16 @@ def dup(filename, outname):
     o.close()
 
 
+def n7_quality_check(norm_dict, ignore = False):
+   if ignore:
+      print("ignoring n7 quality check.")
+   else:
+      if(norm_dict['GPUR'] < .015 or norm_dict['GPYR'] < .015):
+         print("Warning: Unusually low raw N7 reactivity. Consequently, N7 reactivity profiles will not be plotted.\nPlease double check experimental procedure.\n   - This may be caused by highly structured RNA. In this case passing --ignore_low_n7\n    will ignore this QC and plot the N7 data / produce the .mutga file(s) regardless.")
+         return "low N7,"
+   return ""
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
@@ -341,7 +455,19 @@ if __name__ == "__main__":
     h = "Normalize data using per-nt DMS normalization scheme."
     parser.add_argument("--dms", action="store_true", default=False, help=h)
 
+    h = "The threshold number for nucleotides with quality reactivity information"
+    parser.add_argument("--threshold", type=int, default=20, help=h)
+
+    h = "Normalize data in accordance with N7 practices as opposed to N1/N3" 
+    parser.add_argument("--dmsrun", action="store_true", default=False, help=h)
+
+    h = "Ignore low N7 QC check so .mutga, .txtga, and N7 plots are all produced"
+    parser.add_argument("--ignore_low_n7", action="store_true", default=False, help=h)
+    
     p = parser.parse_args(sys.argv[1:])
+
+    if p.dmsrun:
+        keepnan=True
 
     if p.tonorm is not None and p.normout is not None:
         if len(p.tonorm) != len(p.normout):
@@ -379,18 +505,18 @@ if __name__ == "__main__":
 
     for name in p.tonorm:
         sequence, profile, stderr = load_profile(name)
-        print("loaded profile and stderrs from "+name)
         sequence_list.append(sequence)
         profile_list.append(profile)
         stderr_list.append(stderr)
 
     try:
-        factors = calc_norm_factor(sequence_list, profile_list, pernt=p.dms)
+        factors = calc_norm_factor(sequence_list, profile_list, p.threshold ,pernt=p.dms, dms=p.dmsrun)
         print("calculated normalization factor: {}".format(factors))
-    
+       
     except NormError as e:
         if p.warn_on_error:
             print(e)
+            print("factors = None")
             factors = None
         else:
             raise e
@@ -401,12 +527,13 @@ if __name__ == "__main__":
         # FIXME: This ends up reading each file twice
         sequence, profile, stderr = load_profile(input_filename)
         if factors is not None:
-            profile, stderr = normalize_profile(sequence, profile, stderr, factors)
+            if not p.dmsrun:
+               profile, stderr = normalize_profile(sequence, profile, stderr, factors)
+            else:
+               profile, stderr  = normalize_profile(sequence, profile, stderr, factors,keepnan, p.dmsrun, p.normout, p.ignore_low_n7)
+
+
             write_norm_columns(profile, stderr, input_filename, output_filename)
-            #if output_filename is None:
-            #    print("updated {} with normalized data columns".format(input_filename))
-            #else:
-            #    print("wrote normalized data from file {} to output file {}".format(input_filename, output_filename))
         else:
             # just copy data to new files, don't create new columns
             if output_filename is not None:

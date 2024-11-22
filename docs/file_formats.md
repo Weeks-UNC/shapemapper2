@@ -77,7 +77,10 @@ amplicon primer pair read depths.
 
 <a name="profile-format"> </a>
 
-### `<name>_<RNA>_profile.txt`
+### `<name>_<RNA>_profile.txt and <name>_<RNA>_profile.txtga`
+
+Note - profile.txtga file will only contain information about
+N7-G sites. see [N7-G](docs/N7-G.md).
 
 Tab-delimited text columns. First line is column names.                     
 
@@ -184,7 +187,10 @@ Format: SAM
 
 Commandline option: <kbd>--output-parsed-mutations</kbd>
 
-Filename: `<name>_<sample>_<RNA>_parsed.mut`
+Filename: `<name>_<sample>_<RNA>_parsed.mut and <name>_<sample>_<RNA>_parsed.mutga`
+
+Note - parsed.mutga files only contains information pertaining to N7-G modification.
+see [N7-G](docs/N7-G.md).
 
 #### Format:
 

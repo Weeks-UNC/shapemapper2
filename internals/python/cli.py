@@ -8,6 +8,7 @@ High-level shapemapper commandline interface
 # --------------------------------------------------------------------- #
 
 import sys
+import re
 import os
 import shutil
 
@@ -15,6 +16,29 @@ import pyshapemap.pipeline_arg_parser as ap
 from pyshapemap.pipeline_builder import build_pipeline
 from pyshapemap.util import Logger, timestamp, version
 from pyshapemap.flowchart import draw_flowchart
+from pyshapemap.nodes import FileNode
+
+
+def file_check(args):
+   """
+      Checks if all .fastq/.fastq.gz's and .fa files
+      actually exist.
+      
+      If they do not exist, this function notifies 
+      user and halts execution.
+   """
+
+   files = []
+   for arg in args:
+      if arg.find(".gz") != -1 or arg.find(".fastq") != -1 or arg.find(".fa") != -1:
+         files.append(arg)
+
+   for f in files:
+      if not os.path.exists(f):
+         print("Error, {} not found. Please verify name of file and resubmit.".format(f))
+         sys.exit()
+
+    
 
 def run(args):
     assert isinstance(args, list)
@@ -67,7 +91,19 @@ def run(args):
                                  timestamp())
                 print(msg)
 
-        success = pipeline.run()
+
+        #If N7 and parallel makes additional FIFO pipes so script may be run in parallel. 
+        #If dms, makes a fifo in accordance with new dms processing naming scheme.
+        if "--N7" in args and "--serial" not in args:
+           success = pipeline.run(N7=True, dms=True)
+        elif "--dms" in args and "--serial" not in args:
+           success = pipeline.run(dms=True)
+        else:
+           success = pipeline.run()
+
+        # Fix to aid downstream file moving stuff
+        if "--star-aligner" in args and "--serial" not in args:
+            args.append("--serial")
 
         if not success:
             if arg_dict["rerun_on_star_segfault"]:
@@ -125,6 +161,106 @@ def run(args):
                 msg += "to exclude mutations within primer binding regions."
                 print(msg)
 
+            #Transfers .mut* and .sam files if specified during a parallel run. Necessary due to changes
+            #required by N7 parallel processing
+            if ('--output-aligned-reads' in args or '--output-aligned' in args) and '--serial' not in args:
+               samFiles = []
+               for c in pipeline.collect_low_level_components():
+                  for node in c.get_component_nodes():
+
+                     if "SplitToFile" in c.get_name() and "--dms" not in args:
+                        for out_node in node.output_nodes:
+                           if isinstance(out_node, FileNode):
+                              fname = out_node.filename
+                              if "to_file.sam" in fname:
+                                 samFiles.append(fname)
+
+
+                     if isinstance(node.input_node, FileNode) and "--dms" in args:
+                        fname = node.input_node.filename
+
+                        if '--star-aligner' in args:
+                           if ".sam" in fname and "SamMixer" in fname:
+                              if fname not in samFiles:
+                                 samFiles.append(fname)
+
+                        else:
+                           if ".sam" in fname:
+                              if fname not in samFiles:
+                                 samFiles.append(fname)
+
+
+               for sam in samFiles:
+                  splFile = sam.split("/")
+                  truncFile = splFile[-1]
+                  out_name = pipeline.out + "/" + truncFile
+                  if "--dms" in args:
+                     shutil.move(sam + "move", out_name)
+                  else:
+                     shutil.move(sam , out_name)
+
+            # Transfer processed reads at end of run
+            if "--output-processed-reads" in args and "--star-aligner" in args and "--serial" not in args:
+                if pipeline.temp == "shapemapper_temp":
+                    t = pipeline.temp + f"/{arg_dict['name']}"
+                else:
+                    t = pipeline.temp
+                extracted_files = []
+                for root, _, files in os.walk(pipeline.temp):
+                    for f in files:
+                        if f.endswith(".processed_read_move_extension"):
+                            extracted_files.append(root + "/" + f)
+                for f in extracted_files:
+                    os.rename(f, pipeline.out + "/" + f.removesuffix(".processed_read_move_extension").split("/")[-1])
+                    
+
+
+            #If N7 QC is triggered, removes all .mutga and .txtga files so user must 
+            #at least read warning (in order to obtain flag) before gaining access
+            #to these datastreams for subsequent processing. (Like RINGMAP or PAIRMAP)
+            #print("Removing files from {}".format(pipeline.out))
+            sub_name=arg_dict['name']
+            try:
+               files = os.listdir(pipeline.out)
+               n7_message_file_regex =  "\." + sub_name + ".*_n7message.txt" 
+               for f in files:
+                  if re.findall(n7_message_file_regex, f) != []:
+                     n7_message_file = pipeline.out + "/" + f
+               with open(n7_message_file, "r") as n7_file:
+                  warnings = [line for line in n7_file][0].split(",")
+                  if "low N7" in warnings:
+                     to_remove = []
+
+                     mod_ga_regex = sub_name + "_Modified.*\.mutga"
+                     unt_ga_regex = sub_name + "_Untreated.*\.mutga"
+                     txt_ga_regex =   "^[^.]*" + sub_name + ".*" + "profile\.txtga"
+                     for f in files:
+                        #if f.find(".mutga") != -1:
+                        if re.findall(mod_ga_regex, f) != []:
+                           to_remove.append(f)
+                        elif re.findall(unt_ga_regex, f) != []:
+                           to_remove.append(f)
+                        elif re.findall(txt_ga_regex, f) != []:
+                           to_remove.append(f)
+                     for r in to_remove:
+                        os.remove(pipeline.out + "/" + r)
+               os.remove(n7_message_file)
+
+            except UnboundLocalError as e:
+                if str(e).find("n7_message_file") != -1: #If n7_message_file not bound, it simply wasn't generated and we can skip.
+                   pass
+                else:
+                   raise # Else re raise error as it is unexpected.
+
+            if '--output-temp' not in args:
+               print("Deleting temp files. Use --output-temp to retain temp files.")
+               shutil.rmtree(pipeline.temp + "/" + sub_name)
+
+               if os.path.exists(pipeline.temp): # Workaround to avoid error message if run is un named
+                   subdirs = os.listdir(pipeline.temp)
+                   if len(subdirs) == 0:
+                       shutil.rmtree(pipeline.temp)
+
             sys.exit(0)
 
     finally:
@@ -138,5 +274,6 @@ def run(args):
             pass
 
 if __name__ == "__main__":
+    file_check(sys.argv)
     run(sys.argv)
 

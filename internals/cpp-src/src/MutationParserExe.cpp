@@ -40,6 +40,7 @@ int main(int argc, char *argv[]) {
         bool require_reverse_primer_mapped;
         int max_primer_offset;
         bool debug;
+        bool N7;
 
         po::options_description desc("Usage");
         desc.add_options()
@@ -65,6 +66,10 @@ int main(int argc, char *argv[]) {
 
             // new flag distinguishing merged from unpaired input
             ("input_is_unpaired", po::bool_switch(&input_is_unpaired)->default_value(false),
+            "specify that reads are unpaired (as opposed to paired and/or unmerged paired reads)")
+
+            //flag distinguishes N7 runs (produces .mutga files) from normal runs (produce .mut files)
+            ("N7", po::bool_switch(&N7)->default_value(false),
             "specify that reads are unpaired (as opposed to paired and/or unmerged paired reads)")
 
             /*
@@ -139,7 +144,11 @@ int main(int argc, char *argv[]) {
         std::string file_type = "";
         std::string infile = BA::to_lower_copy(in);
         if (BA::ends_with(infile, ".sam") or
-            BA::ends_with(infile, ".sam.gz")) {
+            BA::ends_with(infile, ".sam.gz") or
+            BA::ends_with(infile, ".samn1") or
+            BA::ends_with(infile, ".sam.gzn1") or
+            BA::ends_with(infile, ".samn7") or
+            BA::ends_with(infile, ".sam.gzn7")) {
             file_type = "SAM";
         } else {
             std::cerr << "Unable to determine file type of "
@@ -216,6 +225,8 @@ int main(int argc, char *argv[]) {
             std::cout << "\tusing only mutations of the type: " << use_only_mutation_type << '\n';
         }
 
+        std::cout << "\tN7 IS SET TO " << N7 << '\n';
+
         std::cout << std::flush;
 
         if (file_type=="SAM"){
@@ -257,6 +268,7 @@ int main(int argc, char *argv[]) {
                                       max_primer_offset,
                                       input_is_unpaired,
                                       debug,
+                                      N7,
                                       warn_on_no_mapped);
         }
 

@@ -165,6 +165,15 @@ Siegfried NA, Busan S, Rice GM, Nelson JA, Weeks KM. RNA motif discovery by SHAP
 Smola MJ, Rice GM, Busan S, Siegfried NA, Weeks KM. Selective 2'-hydroxyl acylation analyzed by primer extension and mutational profiling (SHAPE-MaP) for direct, versatile and accurate RNA structure analysis. _Nat Protoc_. 2015, 10(11):1643-69.
 [link](http://www.ncbi.nlm.nih.gov/pubmed/21979276)
 
+#### For DMS-specific analyses, please cite:
+
+David Mitchell, III et al, Mutation signature filtering enables high-fidelity RNA structure probing at all four nucleobases with DMS, Nucleic Acids Research, 2023;, gkad522,
+[link](https://doi.org/10.1093/nar/gkad522)
+
+#### For msDMS_MaP (N7-G) analyses, please cite:
+
+Irfana Saleem, Thomas Miller, Lucas Kearns, David Mitchell, Ritwika Bose, Chase Weidman, Anthony Mustoe. Title to be determined. Journal to be determined. 202X.
+
 ---
 
 &nbsp;&nbsp;&nbsp;&nbsp;

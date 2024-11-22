@@ -9,6 +9,62 @@ This is a github-flavored markdown file not meant to be easily readable.
 Version history
 ---------------
 
+###Version 2.3
+August 30, 2024
+
+ADDED:
+
+Added capacity for Shapemapper to process and output N7-G modification
+information (see *profile.txtga, *.mutga files). 
+
+Added ability for renderfigures to visualize raw and normalized N7-G reactivity rate.
+
+Added --N7 Flag. Enables toggling of N7 Data processing / output
+
+Added --pernt-norm-factor-threshold flag. Sets minimum number of nucleotides with quality
+reactivity information needed for per-nt normalization. 
+
+Temp file now deleted upon run completion by default. Add --output-temp to
+arguments to avoid this.
+
+c++ code modified to ignore mutations involving positions within 3 NT of forward 
+and reverse primer sites. These nucleotides are effectively set to "no data".
+
+Added an N7-G quality control filter detecting low N7-G reactivity. If trigerred,
+N7-G output files will be deleted and N7-G reactivity will not be visualized. This
+may be bypassed with the --ignore_low_N7 flag.
+
+Added --bypass_filters flag. Equivalent to passing --ignore_low_N7, and
+--pernt-norm-factor-threshold 1.
+
+CHANGED:
+
+Bowtie2 wrapper output filtering changed to remove Warning about reads
+failing to align because they are < 2 characters long or beacause length was
+<= seed mismatches.
+
+If normalized reactivtities are found to be infinite, they are set to np.nan instead.
+
+high mutation threshold in N1/3 dms quality control check has been modified.
+(A: 0.02 -> 0.05; C 0.02 -> 0.05; U 0.005 -> 0.01)
+
+Updated normalization scheme to account for purine and pyrimidine in N7-G
+reactivity normalization. Additionally, highly protected bases (bases in
+which background is higher than the modified treatment) are set to a normalized 
+value of 3.32.
+
+FIXED:
+
+Fixed inability of --N7 runs to be performed in parallel when using bowtie2 aligner.
+
+Fixed error arising in per nucleotide normalization when the 90th and 95th
+percetile of reactivities are the same.
+
+Fixed error arising when fastq files had additional text besides "+" in the
+third field.
+
+Fixed error that prevented --amplicon and --correct-seq from being used
+simultaneously.
 ### 2.2.1 (August 2022)
 - Added dmsmode option for DMS-specific data processing workflow to obtain
   highly specific probing signals at all four nucleobases. Read dmsmode 
@@ -21,6 +77,7 @@ Version history
   parallel mode with --star-aligner option. Now, when -star-aligner
   mode is selected, --serial mode is automatically turned on
 - Updated build instructions to make it easier to build binaries
+
 
 ### 2.1.5 (August 2019)
 No future updates are planned beyond this final release.

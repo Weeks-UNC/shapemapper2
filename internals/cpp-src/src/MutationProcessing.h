@@ -208,15 +208,21 @@ namespace mutation {
     }
 
     /**
-     * @brief
+     * @brief - Strips primer by removing mutations involving primer and setting corresponding read
+     * depth to 0.
+     *
+     * 27 March 2023 - Lucas - Changing it so first 3 and last 3 NT's adjacent to nucleotide are
+     * stripped as well as primer as these are notoriously unreliable.
      */
+    //
     boost::tuple<std::vector<Mutation>,
             std::vector<bool>>
     stripPrimers(const std::vector<Mutation> &mutations,
                  const int left,
                  const std::vector<bool> &depth_in,
                  const PrimerPair &primer_pair,
-                 const bool debug) {
+                 const bool debug,
+                 const bool dms) {
         if (debug) { std::cout << primer_pair.toString() << std::endl << std::flush; }
 
         int len = depth_in.size();
@@ -227,35 +233,86 @@ namespace mutation {
         }
 
         std::vector<Mutation> stripped_mutations;
-        if (primer_pair.fw_left > -1) {
-            if (primer_pair.fw_right >= left) {
-                for (int i = 0;
-                     i + left <= primer_pair.fw_right;
-                     i++) {
-                    try {
-                        depth.at(i) = 0;
-                    } catch (std::out_of_range &e) { }
-                }
-            }
-            if (primer_pair.rv_left <= right) {
-                for (int i = len - 1;
-                     i + left >= primer_pair.rv_left;
-                     i--) {
-                    try {
-                        depth.at(i) = 0;
-                    } catch (std::out_of_range &e) { }
-                }
-            }
-            for (auto &m : mutations) {
-                if (m.right < primer_pair.rv_left and m.left > primer_pair.fw_right) {
-                    stripped_mutations.push_back(Mutation(m));
-                }
-            }
+      
+        if ( dms ){
+           std::cout << "Engaging dms logic now still need to add nested else around everything below this"   << std::endl ;
         } else {
-            for (auto &m : mutations) {
-                stripped_mutations.push_back(Mutation(m));
-            }
+           std::cout << "This should never ever print" << std::endl ; 
         }
+
+        std::cout << "--updated_2--" << std::endl ;
+
+
+
+        //start of nesting / copying
+        if ( dms ){
+           if (primer_pair.fw_left > -1) {
+               if (primer_pair.fw_right >= left) {
+                   for (int i = 0;
+                        i + left <= primer_pair.fw_right + 3;
+                        i++) {
+                       try {
+                           depth.at(i) = 0;
+                       } catch (std::out_of_range &e) { }
+                   }
+               }
+               if (primer_pair.rv_left <= right) {
+                   for (int i = len - 1;
+                        i + left >= primer_pair.rv_left - 3;
+                        i--) {
+                       try {
+                           depth.at(i) = 0;
+                       } catch (std::out_of_range &e) { }
+                   }
+               }
+               for (auto &m : mutations) {
+                   if (m.right < primer_pair.rv_left - 3 and m.left > primer_pair.fw_right + 3) {
+                       stripped_mutations.push_back(Mutation(m));
+                   }
+               }
+           } else {
+               for (auto &m : mutations) {
+                   stripped_mutations.push_back(Mutation(m));
+               }
+           }
+        } else { 
+           if (primer_pair.fw_left > -1) {
+               if (primer_pair.fw_right >= left) {
+                   for (int i = 0;
+                        i + left <= primer_pair.fw_right;
+                        i++) {
+                       try {
+                           depth.at(i) = 0;
+                       } catch (std::out_of_range &e) { }
+                   }
+               }
+               if (primer_pair.rv_left <= right) {
+                   for (int i = len - 1;
+                        i + left >= primer_pair.rv_left;
+                        i--) {
+                       try {
+                           depth.at(i) = 0;
+                       } catch (std::out_of_range &e) { }
+                   }
+               }
+               for (auto &m : mutations) {
+                   if (m.right < primer_pair.rv_left and m.left > primer_pair.fw_right) {
+                       stripped_mutations.push_back(Mutation(m));
+                   }
+               }
+           } else {
+               for (auto &m : mutations) {
+                   stripped_mutations.push_back(Mutation(m));
+               }
+           }
+
+        }
+        //End of nesting / copying
+
+
+
+
+
         return boost::make_tuple(stripped_mutations,
                                  depth);
     }
@@ -1323,7 +1380,14 @@ namespace mutation {
 
         if (trim_amplicon_primers) {
             // amplicon primer trim
-            read.stripPrimers(primer_pair);
+            // Lucas: Simple check to see if dms or not. If dms, strip 3 Nt adjacent
+            // to each primer as these are unreliable
+            if (mutation_type == "dms"){
+               read.stripPrimers(primer_pair, true);
+            } else {
+               read.stripPrimers(primer_pair, false);
+            }
+
             if (debug_out) {
                 debug_out << "trimmed amplicon primer sites\n"
                           << read
@@ -1395,7 +1459,7 @@ Read::trimRightEnd(const int exclude_3prime){
 }
 
 Read&
-Read::stripPrimers(const PrimerPair& primer_pair) {
+Read::stripPrimers(const PrimerPair& primer_pair, bool isdms = false) {
     std::vector<Mutation> stripped_mutations;
     std::vector<bool> depth;
     boost::tie(stripped_mutations,
@@ -1403,7 +1467,8 @@ Read::stripPrimers(const PrimerPair& primer_pair) {
                                                this->left,
                                                this->depth,
                                                primer_pair,
-                                               false);
+                                               false,
+                                               isdms);
     (*this).setMutations(stripped_mutations)
            .setDepth(depth);
     return *this;

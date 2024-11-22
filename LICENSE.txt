@@ -1,12 +1,12 @@
-Copyright 2023 
+Copyright 2024
 
 Contributors
 Steven Busan
 Anthony Mustoe
 David Mitchell III
 Patrick Irving
+Thomas Miller
 Lucas Kearns
-
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

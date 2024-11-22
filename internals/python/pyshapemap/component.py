@@ -308,6 +308,7 @@ class Component():
             msg = msg.format(self.get_name())
             raise RuntimeError(msg)
 
+
         # if command is given as a list of str args, combine into
         # a single string
         if isinstance(command, list):
@@ -334,6 +335,8 @@ class Component():
                         values[node.get_name()] = '"'+node.input_node.input_node.foldername+'"'
                     except AttributeError:
                         values[node.get_name()] = '"'+node.input_node.input_node.filename+'"'
+
+
             for outnode in node.output_nodes:
                 if isinstance(outnode, FileNode):
                     values[node.get_name()] = '"'+outnode.filename+'"'
@@ -347,6 +350,8 @@ class Component():
                 values[k] = '"{}"'.format(o)
 
         try:
+            #print("command: ", command)
+            #print("values: ", values)
             formatted = command.format(**values)
         except KeyError as err:
             msg = "Error: for component {}, {} node not linked to a filename or parameter,"
@@ -354,6 +359,7 @@ class Component():
             msg = msg.format(self.get_name(),
                              err)
             raise KeyError(msg)
+
         return formatted
 
     def collect_component_nodes(self,
@@ -699,7 +705,6 @@ class Component():
 
         """
         if self.proc is not None and self.proc.poll() is None:
-            # print("Signalling module "+m.unique_name+" to terminate...")
             pid = self.proc.pid
             try:
                 os.killpg(os.getpgid(pid), signal.SIGTERM)
@@ -712,7 +717,6 @@ class Component():
 
         """
         if self.proc is not None and self.proc.poll() is None:
-            # print("Signalling module "+m.unique_name+" to terminate...")
             pid = self.proc.pid
             try:
                 os.killpg(os.getpgid(pid), signal.SIGKILL)

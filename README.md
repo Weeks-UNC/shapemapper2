@@ -9,7 +9,7 @@ This is a github-flavored markdown file not meant to be easily readable.
 ![](docs/images/header_profile.png)
 **ShapeMapper2**
 ===============
-*Copyright 2019 Steven Busan; 2022 Anthony Mustoe*. This project is licensed under the terms of the 
+*Copyright 2019 Steven Busan; 2024 Anthony Mustoe*. This project is licensed under the terms of the 
 MIT license.
 
 ShapeMapper automates the calculation of RNA chemical probing reactivities 
@@ -40,15 +40,15 @@ Installation
 ------------
 ShapeMapper will only run on 64-bit Linux systems (Mac and Windows are not currently supported).
 
-- Download latest [release](https://github.com/Weeks-UNC/shapemapper2/releases/download/2.2.0/shapemapper2-2.2.tar.gz)
-    - On most systems, typing `wget https://github.com/Weeks-UNC/shapemapper2/releases/download/2.2.0/shapemapper2-2.2.tar.gz`
+- Download latest [release](https://github.com/Weeks-UNC/shapemapper2/releases/download/2.2/shapemapper2-2.3.tar.gz)
+    - On most systems, typing `wget https://github.com/Weeks-UNC/shapemapper2/releases/download/2.2/shapemapper2-2.3.tar.gz`
       will download the file on the commandline.
-    - Be sure to download from the `shapemapper2-2.2.tar.gz` link, _not_ the source code-only links, which
+    - Be sure to download from the `shapemapper2-2.3.tar.gz` link, _not_ the source code-only links, which
       do not include executables.
 
 - Extract release tarball using
     
-    `tar -xvf shapemapper2-2.2.tar.gz`
+    `tar -xvf shapemapper2-2.3.tar.gz`
 
 - Add shapemapper executable to PATH (optional - google this if you don't know how)
 
@@ -58,10 +58,12 @@ ShapeMapper will only run on 64-bit Linux systems (Mac and Windows are not curre
     and `shapemapper_temp`
 
 - To run all unit and end-to-end tests, run `internals/test/run_all_tests.sh`. 
-  This should take about 5-15 minutes. (optional) 
+  This should take about 25-30 minutes. (optional) 
+
+- Occassionally a single module failure detection test may fail. We attribute this error message to idiosyncracies in computational environment as opposed to an issue with shapemapper. This error message may be safely ignored.
 
 - Alternatively, you can build ShapeMapper if the provided binaries do not run on your platform. 
-  Building is relatively straightforward using conda. See <a href="https://github.com/Weeks-UNC/shapemapper2/blob/master/docs/building.md">building</a>.
+  Building is relatively straightforward using conda. See <a href="https://github.com/Weeks-UNC/shapemapper2/blob/v23-release/docs/building.md">building</a>.
 
 <!-- #### -->
 
@@ -285,6 +287,25 @@ shapemapper <parameters> <inputs> | --version | --help
 --serial     Run pipeline components one at a time and write all intermediate files
              to disk. Useful for debugging, but not generally recommended, as this will 
              use large amounts of disk space. Default=False
+
+--N7         Add N7 information to data visualization. Adds a graph of mutation rates
+             and reactivities specific to N7 data in profiles.pdf. Prior to usage, 
+             ensure proper protocol was followed to generate valid N7 data.
+
+--output-temp     
+             Preserves temp files. Default=False.
+             
+--pernt-norm-factor-threshold
+             Set the number of NTs needed for effective per-nt normalization factor
+             calculation. May need to change in the case of short RNAs. Default=20
+
+--ignore_low_N7
+             Bypass N7 quality control filters.
+
+--bypass_filters
+             Bypass N7 quality control filters and set threshold for NTs needed for effective
+             per-nt normalization factor calculation to 1.
+             (Equivalent to "--ignore_low_N7 --theshold 1")
 ```
 
 &nbsp;&nbsp;&nbsp;&nbsp;
@@ -343,6 +364,9 @@ see [FAQ](docs/FAQ.md)
 ### DMS mode
 see [DMSmode](docs/dmsmode.md)
 
+### N7-G related functionality
+see [N7-G](docs/N7-G.md)
+
 ### Low-quality profile warning message
 If ShapeMapper gives a red warning message about possible low-quality
 reactivity profiles, read the log file to see which quality control
@@ -396,7 +420,11 @@ Smola MJ, Rice GM, Busan S, Siegfried NA, Weeks KM. Selective 2'-hydroxyl acylat
 
 #### For DMS-specific analyses, please cite:
 
-David Mitchell, III et al, Mutation signature filtering enables high-fidelity RNA structure probing at all four nucleobases with DMS, Nucleic Acids Research, 2023;, gkad522, 
+David Mitchell, III et al, Mutation signature filtering enables high-fidelity RNA structure probing at all four nucleobases with DMS, Nucleic Acids Research, 2023;, gkad522,
 [link](https://doi.org/10.1093/nar/gkad522)
+
+#### For msDMS_MaP (N7-G) analyses, please cite:
+
+Irfana Saleem, Thomas Miller, Lucas Kearns, David Mitchell, Ritwika Bose, Chase Weidman, Anthony Mustoe. Title to be determined. Journal to be determined. 202X.
 
 &nbsp;&nbsp;&nbsp;&nbsp;

@@ -716,10 +716,13 @@ namespace mutation_parser {
 
             //if (debug_out) { debug_out << "[separator]\n"; }
             processed_read.setReadType(PAIRED);
-            s = processed_read.serializeMutations();
+
+
+            s = processed_read.serializeMutations(); 
             if (mutation_type == "dms") {
                 sga = processed_read.serializeMutations_GA();
             }
+
 
         } else {
             // paired reads mapped separately
@@ -736,9 +739,9 @@ namespace mutation_parser {
                 }
 
                 if (reads[i].mapping_category != INCLUDED) {
-                    s = reads[i].serializeMutations();
+                    s += reads[i].serializeMutations();
                     if (mutation_type == "dms") {
-                        sga = reads[i].serializeMutations_GA();
+                        sga += reads[i].serializeMutations_GA();
                     }
                     continue;
                 }
@@ -759,9 +762,10 @@ namespace mutation_parser {
                                          matching_primer_pairs[i],
                                          debug);
 
-                s = processed_read.serializeMutations();
+                std::cout << "s before being set non-concordant: " << s << "\n" << std::endl;
+                s += processed_read.serializeMutations();
                 if (mutation_type == "dms") {
-                    sga = processed_read.serializeMutations_GA();
+                    sga += processed_read.serializeMutations_GA();
                 }
             }
         }
@@ -856,6 +860,7 @@ namespace mutation_parser {
                   const int max_primer_offset,
                   const bool input_is_unpaired,
                   const bool debug,
+                  const bool N7,
                   const bool warn_on_no_mapped = false) {
     
 
@@ -906,32 +911,35 @@ namespace mutation_parser {
         out.push(file_out);
 
         
-        /* N7COMMENT
+
         // init GA file output for DMS flag
         //BI::filtering_ostream out_GA; // declare, but only init if dms flag is set
-        std::ofstream out_GA;
-        if (mutation_type == "dms") {
-    
-            // create ga filename
-            // std::string outname_ga = outname.substr(0, outname.find_first_of(".")) + "_GA" + outname.substr(outname.find_first_of("."));
-            std::string outname_ga = outname + "ga";
-            
-
-            //std::ofstream out_GA(outname_ga, std::ios_base::out | std::ios_base::binary);
-            out_GA.open(outname_ga, std::ios_base::out | std::ios_base::binary);
-
-            if (!out_GA) {
-                throw std::runtime_error(
-                        "ERROR: Could not open output file " + outname_ga + "\nCheck file and folder permissions.");
-            }
+        
+        //Kearns: 6 April 2023 commented out block below in an effort to generate mutation parser
+        //component separate for GA functionality
+        
+//        std::ofstream out_GA;
+//        if (mutation_type == "dms") {
+//    
+//            // create ga filename
+//            // std::string outname_ga = outname.substr(0, outname.find_first_of(".")) + "_GA" + outname.substr(outname.find_first_of("."));
+//            std::string outname_ga = outname + "ga";
+//            
+//
+//            //std::ofstream out_GA(outname_ga, std::ios_base::out | std::ios_base::binary);
+//            out_GA.open(outname_ga, std::ios_base::out | std::ios_base::binary);
+//
+//            if (!out_GA) {
+//                throw std::runtime_error(
+//                        "ERROR: Could not open output file " + outname_ga + "\nCheck file and folder permissions.");
+//            }
 
             //if (BF::extension(BF::path(outname_ga)) == ".gz") {
                 // compress using gzip if requested
             //    out_GA.push(BI::gzip_compressor());
             //}
             //out_GA.push(file_out_GA);
-         }
-        */
+//         }
 
         // init debug_out if filename provided
         if (debug_outname.size() > 0) {
@@ -949,6 +957,7 @@ namespace mutation_parser {
         std::vector <std::string> lines; // store R1 as first element and R2 as second element if present
         while (std::getline(in, line)) {
             // skip headers
+            std::cout << "line: " << line << endl;
             if (line.length() < 1 or line[0] == '@') {
                 continue;
             }
@@ -1024,15 +1033,19 @@ namespace mutation_parser {
                                                  max_primer_offset,
                                                  debug);
 
-                out << s;
-                out << std::flush; // FIXME: remove if possible?
-                
-                /* N7COMMENT
-                if (mutation_type == "dms") {
-                    out_GA << sga;
-                    out_GA << std::flush;
+                if (N7) {
+                    out << sga;
+                    out << std::flush;
+
+                } else {
+                    out << s;
+                    out << std::flush; // FIXME: remove if possible?
                 }
-                */
+                //Kearns edit 6 April 2023
+                //if (mutation_type == "dms") {
+                //    out_GA << sga;
+                //    out_GA << std::flush;
+                //}
 
                 c++; // FIXME: don't increment for unmapped reads
                 lines.clear();
@@ -1078,17 +1091,22 @@ namespace mutation_parser {
                                                   max_primer_offset,
                                                   debug);
 
-                out << s;
-                out << std::flush; // FIXME: remove if possible
-                
-                /*N7COMMENT
-                if (mutation_type == "dms") {
-                    //std::cout << sga << std::endl << std::flush;
+                if (N7) {
+                    out << sga;
+                    out << std::flush;
 
-                    out_GA << sga;
-                    out_GA << std::flush;
+                } else {
+                    out << s;
+                    out << std::flush; // FIXME: remove if possible
                 }
-                */
+
+                //Kearns 6 April 2023
+                //if (mutation_type == "dms") {
+                //    //std::cout << sga << std::endl << std::flush;
+
+                //    out_GA << sga;
+                //    out_GA << std::flush;
+                //}
 
                 c++;
                 lines.clear();
@@ -1097,12 +1115,12 @@ namespace mutation_parser {
 
         out << std::flush;
 
-        /* N7COMMENT
-        if (mutation_type == "dms") {
-            out_GA << std::flush;
-            out_GA.close();
-        }
-        */
+        //Kearns 6 April 2023
+        //if (mutation_type == "dms") {
+        //    out_GA << std::flush;
+        //    out_GA.close();
+        //}
+
 
         if (c < 1) {
             if (warn_on_no_mapped) {

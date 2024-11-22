@@ -1,8 +1,9 @@
 # --------------------------------------------------------------------- #
 #  This file is a part of ShapeMapper, and is licensed under the terms  #
-#  of the MIT license. Copyright 2018 Steven Busan            			#
-#  								 2023 Anthony Mustoe                    #
-#                                     David Mitchell III                #
+#  of the MIT license. Copyright 2018 Steven Busan.			            #
+#                                2024 Anthony Mustoe,                   #     
+#                                     David Mitchell III.               #
+#  									                                    #
 # --------------------------------------------------------------------- #
 
 import os
@@ -246,6 +247,13 @@ def parse_args(args):
     parser.add_argument('--max-primer-offset', type=int, default=10)
     parser.add_argument('--dms', action="store_true", default=False)
 
+    parser.add_argument('--N7', action="store_true", default=False)
+    parser.add_argument('--pernt-norm-factor-threshold', dest = "threshold", type=int, default=20)
+    parser.add_argument('--output-temp', action="store_true")
+    parser.add_argument('--ignore_low_n7', action="store_true")
+    parser.add_argument('--bypass_filters', action="store_true")
+
+
 
     # TODO: optional syntax to auto-generate sample names from file/folder names
 
@@ -263,8 +271,15 @@ def parse_args(args):
         parser.print_usage()
         sys.exit(1)
 
+
     # first parse "global" options
     p, rest = parser.parse_known_args(args)
+
+    # Bypass current QCs
+    if p.bypass_filters:
+        print("--bypass_filters flag passed - ignoring low N7 reactivity and setting per-NT threshold to 1.")
+        p.ignore_low_n7 = True
+        p.threshold = 1
 
     # set some dependent flags for debug output option
     if p.render_mutations:
@@ -274,8 +289,16 @@ def parse_args(args):
         p.right_align_ambig_dels = True
         p.right_align_ambig_ins = True
 
+    # Temporary work around to allow output processed reads with current (2.3) parallel star aligner patch
+    p.output_processed_reads_workaround = False
+    if p.output_processed_reads and p.star_aligner and not p.serial:
+        p.output_processed_reads_workaround = True
+
     if p.target_raw == "" and (p.target is None or len(p.target) == 0):
         raise RuntimeError("Error: must provide at least one target sequence (--target)")
+
+    if (p.N7 and p.dms == False):
+        raise RuntimeError("Error: cannot call N7 without --dms flag")
 
     if p.target is None:
         p.target = []
@@ -286,15 +309,6 @@ def parse_args(args):
             check_fasta(fa)
     if p.out:
         check_folder(p.out)
-    
-    if p.star_aligner:
-        p.serial = True
-        print('Using serial mode, which is currently required for STAR aligner')
-    
-    if p.dms:
-        p.serial = True
-        print('Using serial mode, which is currently required for DMS mode')
-
 
     if p.dms and p.max_bg == 0.05:
         p.max_bg = 0.02

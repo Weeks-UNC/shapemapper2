@@ -3,6 +3,7 @@
 #  of the MIT license. Copyright 2018 Steven Busan.                     #
 # --------------------------------------------------------------------- #
 
+import re
 import os
 import stat
 import shutil
@@ -160,10 +161,17 @@ class PipeNode(FileNode):
         super().__init__(gv_props=gv_props,
                          **kwargs)
 
-    def make_pipe(self):
+    def make_pipe(self, N7=False, dms=False):
         assert isinstance(self.filename, str)
         try:
-            os.mkfifo(self.filename)
+            if dms:
+               if re.search("\.sam", self.filename):
+                  os.mkfifo(self.filename + "N1")
+                  if N7:
+                     os.mkfifo(self.filename + "N7")
+               os.mkfifo(self.filename)
+            else:
+               os.mkfifo(self.filename)
         except FileExistsError:
             raise RuntimeError("File {} already exists. ".format(self.filename)+name_collision_msg)
 

@@ -23,6 +23,7 @@ import sys, os
 import argparse
 
 import numpy as np
+import re
 from numpy import sqrt, square, isnan, nan
 
 np.seterr("ignore") # disable divide-by-zero warnings
@@ -88,11 +89,10 @@ def calc_profile(counts, depths):
 # where dict keys are: modified, untreated, denatured
 def filter_profile(profile, stderrs, depths, rates,
                    max_background=0.05, min_depth=1000,
-                   random_primer_len=None):
+                   random_primer_len=None, amplicon=False):
 
     filtered_profile = np.copy(profile)
     filtered_stderr = np.copy(stderrs)
-
     for i in range(len(profile)):
         # exclude left-most nuc (since mutations on the end of sequence aren't reliable
         if i == 0:
@@ -119,6 +119,7 @@ def filter_profile(profile, stderrs, depths, rates,
         else:
             filtered_profile[i] = nan
             filtered_stderr[i] = nan
+         
     return filtered_profile, filtered_stderr
 
 
@@ -129,6 +130,7 @@ def write_tab_file(seq,
                    addtl_data, addtl_column_names,
                    out,
                    decimal_places=6):
+
     n = "{{:.{}f}}".format(decimal_places)
 
     headers_types = [
@@ -394,6 +396,7 @@ if __name__ == "__main__":
     parser.add_argument("--maxbg", type=float, default=None)
     parser.add_argument("--random-primer-len", type=int, default=None)
     parser.add_argument("--dms", action='store_true', help='Use DMS normalization')
+    parser.add_argument("--amplicon", action='store_true', help='Used for masking low quality portions of the RNA')
     
 
     p = parser.parse_args(sys.argv[1:])
@@ -454,6 +457,11 @@ if __name__ == "__main__":
         kwargs["max_background"] = p.maxbg
     if p.random_primer_len is not None:
         kwargs["random_primer_len"] = p.random_primer_len
+    if p.amplicon is not None:
+        kwargs["amplicon"] = p.amplicon
+
+
+
     filtered_profile, filtered_stderrs = filter_profile(*args, **kwargs)
 
     # create output directory if needed

@@ -123,6 +123,7 @@ def locate_primer_pairs(fastas,
             rv_primer = Primer(complement(rv_seq.upper()), i+1, len(seq)-1)
             if len(fw_seq) < 1 or len(rv_seq) < 1:
                 raise RuntimeError("Error: Could not find lowercase sequence indicating amplicon primers.")
+
             primers[name] = [(fw_primer, rv_primer)]
 
     # apply one set of primers to all RNAs if needed
@@ -163,7 +164,8 @@ def locate_primer_pairs(fastas,
                     except ValueError:
                         pass
                 except ValueError:
-                    raise RuntimeError("Unable to locate reverse primer in the sequence of RNA '{}'".format(name))
+                    #raise RuntimeError("Unable to locate reverse primer in the sequence of RNA '{}'".format(name))
+                    raise RuntimeError("Unable to locate reverse primer: {} in the sequence of RNA '{}'".format(rp, name))
 
     # check for targets with no matching primers
     for RNA in primers:

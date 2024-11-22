@@ -39,7 +39,6 @@ def split_sam(sam=None,
                 # not provided in names
                 pass
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 

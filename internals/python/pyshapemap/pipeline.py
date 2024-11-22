@@ -85,9 +85,6 @@ class Pipeline(Component):
             if tree_path is None:
                 tree_path = []
             assert isinstance(o, Component)
-            #print("Component {} ({}) at {}".format(o.name,
-            #                                    o.id,
-            #                                    tree_path))
             o.pipeline_location = tree_path
             if len(o.internal_components) == 0:
                 return
@@ -163,9 +160,6 @@ class Pipeline(Component):
             assert isinstance(o, Component)
             if len(o.internal_components)==0:
                 tree_path = tree_path[:-1] # strip trailing '.'
-                #sys.stdout.write("Module {} ({}) at {}\n".format(o.name,
-                #                                                 o.id,
-                #                                                 tree_path))
                 names.append(o.get_name())
                 ids.append(o.id)
                 paths.append(tree_path)
@@ -236,9 +230,6 @@ class Pipeline(Component):
             # collect components that can be run in parallel with
             # this one
             parallel_components = self.collect_parallel_components(starting_comp)
-            #print("Setting run_order to {} for components:".format(run_order))
-            #for c in sorted(parallel_components, key=lambda x: x.pipeline_location):
-            #    print(" {}".format(c.get_name()))
             for c in parallel_components:
                 c.run_order = run_order
         updated_run_order = run_order + 1
@@ -335,7 +326,6 @@ class Pipeline(Component):
                             #raise RuntimeError(err_msg)
                     if ro1 is None or ro2 is None:
                         continue
-                        #raise RuntimeError(err_msg)
 
                     # use existing file node if present (so one output
                     # can be connected to multiple inputs)
@@ -485,7 +475,9 @@ class Pipeline(Component):
 
 
     def make_pipes(self,
-                   components=None):
+                   components=None,
+                   N7=False,
+                   dms = False):
         """
         Create named pipes (FIFOs) for PipeNodes
         If a list of components is provided, only make paths for files
@@ -493,7 +485,7 @@ class Pipeline(Component):
         """
         for node in list(set(self.get_output_filenodes(components=components))):
             if isinstance(node, PipeNode):
-                node.make_pipe()
+                node.make_pipe(N7=N7, dms=dms)
 
     def setup(self,
               temp=None,
@@ -622,35 +614,15 @@ class Pipeline(Component):
             msg += s
         return msg
 
-
-    # def get_all_messages(self,
-    #                      components=None,
-    #                      tail=200):
-    #     term_width, term_height = shutil.get_terminal_size()
-    #     if components is None:
-    #         components = self.get_run_group(self.current_run_group_index)
-    #     msg = ""
-    #     for c in components:
-    #         msg += '▀' * term_width
-    #         msg += c.format_proc_status()
-    #         if self.hung:
-    #             s = ' RUN EXCEEDED TIMEOUT '
-    #             s += '◷' * (term_width - len(s)) + '\n'
-    #             msg += s
-    #         msg += '─' * term_width + "\n"
-    #         msg += c.format_stdout(tail=tail)
-    #         msg += '─' * term_width + "\n"
-    #         msg += c.format_stderr(tail=tail)
-    #         msg += '▄' * term_width + "\n"
-    #     return msg
-
-
     def run(self,
             timeout=None,
             quiet=False,
             latency=0.1,
             success_term_pause=0.05,
-            fail_term_pause=0.5):
+            fail_term_pause=0.5,
+            N7=False,
+            dms=False,
+            serial=False):
         """
         Run process groups in order specified by
         the "run_order" component property
@@ -665,7 +637,14 @@ class Pipeline(Component):
         # anything else, since existing files will cause
         # an error message if --overwrite is not used
         self.make_paths()
-        self.make_pipes()
+
+        if dms and not serial:
+           if N7: 
+              self.make_pipes(dms = True, N7 = True)
+           else:
+              self.make_pipes(dms=True)
+        else:
+           self.make_pipes()
 
         i = 1
         success = True
@@ -924,7 +903,8 @@ def run_fail_test(pipeline=None,
                                quiet=quiet,
                                latency=latency,
                                success_term_pause=success_term_pause,
-                               fail_term_pause=fail_term_pause)
+                               fail_term_pause=fail_term_pause,
+                               serial=pipeline.serial)
         # ^ fails to detect bowtie2 exit with latency 0, 0.001, 0.01, but 0.1 works
 
         if not success:

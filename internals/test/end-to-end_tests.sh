@@ -21,7 +21,6 @@ while [ -h "$SOURCE" ]; do
 done
 BASE_DIR="$( cd -P "$( dirname "$SOURCE" )" && cd ../.. && pwd )"
 
-
 source ${BASE_DIR}/internals/paths/bin_paths.sh
 
 cd ${BASE_DIR}/internals/test/data
@@ -327,7 +326,6 @@ names_args_interleaved=( \
 
 # 29 total tests
 
-
 # associative arrays not available in bash 3
 # - abusing aliases to simulate
 
@@ -408,9 +406,10 @@ for ((i=0;i<len;i++)); do
 
     out=$(tail -n 20 shapemapper_temp/out.txt)
 
-    # strip warning message lines
+    # strip warning message lines as well as temp file user notification
     out=$(sed '/WARNING:/d' <<< "${out}")
     out=$(sed '/See quality control checks/d' <<< "${out}")
+    out=$(sed '/Deleting temp files/d' <<< "${out}")
 
     # look at last line
     out=$(tail -n 1 <<< "${out}")

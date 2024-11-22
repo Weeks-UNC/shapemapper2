@@ -11,6 +11,7 @@ workflow topology after partial execution.
 # --------------------------------------------------------------------- #
 
 import os
+import shutil
 from pprint import pprint
 
 from pyshapemap.connect import *
@@ -31,6 +32,7 @@ def build_pipeline(fastq=None,
                    overwrite=None,
                    name=None,
                    serial=None,
+                   dms=None,
                    verbose=None,
                    target=None,
                    amplicon=None,
@@ -53,6 +55,7 @@ def build_pipeline(fastq=None,
                    min_freq=None,
                    indiv_norm=None,
                    output_processed_reads=None,
+                   output_processed_reads_workaround=None,
                    output_aligned=None,
                    output_parsed=None,
                    output_counted=None,
@@ -63,6 +66,7 @@ def build_pipeline(fastq=None,
                    right_align_ambig_dels=None,
                    right_align_ambig_ins=None,
                    mutation_type_to_count=None,
+                   threshold=20,
                    min_mutation_separation=None,
                    min_qual_to_count=None,
                    random_primer_len=None,
@@ -76,8 +80,11 @@ def build_pipeline(fastq=None,
                    disable_soft_clipping=None,
                    render_flowchart=None,
                    per_read_histograms=None,
+                   N7=None,
+                   ignore_low_n7 = None,
                    **kwargs):
     require_explicit_kwargs(locals())
+
 
     if name is not None and len(name)>0:
         name = sanitize(name)
@@ -88,13 +95,20 @@ def build_pipeline(fastq=None,
     if mutation_type_to_count == "dms":
         dms = True
 
-
+    
 
     pipeline = Pipeline(name=name)
     pipeline.overwrite = overwrite
     pipeline.render_flowchart = render_flowchart
 
 
+
+
+    if output_processed_reads_workaround: # Since Star aligner in parallel runs in a hacky way, not compatible with previous 
+        output_processed_reads = False    # file splitting strategy, must work around it.
+
+
+    
     # write raw fasta sequences to file. bit of a hack to allow
     # easily passing in short sequences from JS frontend without
     # shell access
@@ -105,6 +119,17 @@ def build_pipeline(fastq=None,
         target.append(fa_name)
 
     target_names, target_lengths = read_fasta_names_lengths(target)
+
+
+    # Check for conditions where shapemapper must be run in serial instead of parallel
+    if len(target_names) > 1 and dms and not serial:
+        print("Serial mode currently required for multiple targets and dms. Switching.")
+        serial = True
+    elif star_aligner and not serial:
+        print("Serial mode currently required for STAR aligner. Switching.")
+        serial = True
+
+
     primerlocator = None
     if amplicon:
         # FIXME: make clear on flowchart that fasta inputs are shared with AlignPrep
@@ -245,6 +270,11 @@ def build_pipeline(fastq=None,
                        min_qual_to_trim=min_qual_to_trim,
                        window_to_trim=window_to_trim,
                        min_length_to_trim=min_length_to_trim,
+                       serial=serial,
+                       output_aligned=output_aligned,
+                       output_processed_reads_workaround=output_processed_reads_workaround,
+                       dms=dms,
+                       N7=N7,
                        **kw)
 
             connect(alignprep.index,
@@ -256,7 +286,8 @@ def build_pipeline(fastq=None,
 
             if len(target_names)>1:
                 splitter = SplitByTarget(name="SplitByTarget_"+sample.capitalize(),
-                                          target_names=target_names)
+                                          target_names=target_names,
+                                          dms = dms)
 
                 connect(p.aligned, splitter.input)
 
@@ -285,6 +316,10 @@ def build_pipeline(fastq=None,
             indiv_norm = True
         profile_nodes = []
         ambig_profile_nodes = []
+
+        if N7:
+            profile_nodes_N7 = []
+
         for i in range(len(target_names)):
             p = PostAlignment(name="PostAlignment_RNA_{}".format(i+1),
                               target_name=target_names[i],
@@ -316,8 +351,17 @@ def build_pipeline(fastq=None,
                               render_must_span=render_must_span,
                               max_pages=max_pages,
                               per_read_histograms=per_read_histograms,
+                              threshold=threshold,
+                              N7_arg=N7,
+                              serial=serial,
+                              dms=dms,
+                              ignore_low_n7=ignore_low_n7
                               )
             profile_nodes.append(p.ProfileHandler.CalcProfile.profile)
+            if N7:
+                profile_nodes_N7.append(p.ProfileHandler_GA.CalcProfile.profile)
+
+
             # connect aligned reads nodes to post-alignment inputs
             # FIXME: gotta be a cleaner way to do this
             try:
@@ -325,8 +369,12 @@ def build_pipeline(fastq=None,
                     from_node = mapped_nodes[sample][i]
                     to_node = p["MutationParser_"+sample.capitalize()].input
                     connect(from_node, to_node)
+                    if N7:
+                       to_nodeN7 = p["MutationParserGA_"+sample.capitalize()].input
+                       connect(from_node, to_nodeN7)
             except AttributeError:
                 pass
+
 
             pipeline.add(p)
 
@@ -336,8 +384,18 @@ def build_pipeline(fastq=None,
             normer = NormProfile(name="NormalizeAsGroup",
                                  profiles=profile_nodes,
                                  target_names=target_names, 
-                                 dms=dms)
+                                 dms=dms,
+                                 threshold=threshold)
             pipeline.add(normer)
+            if N7:
+                normer_N7 = NormProfile(name="NormalizeAsGroupN7",
+                                     profiles=profile_nodes_N7,
+                                     target_names=target_names, 
+                                     dms=dms,
+                                     dmsrun=True,
+                                     threshold=threshold)
+                pipeline.add(normer_N7)
+
             # rewire so normalized profiles get used for downstream steps
             for i in range(len(target_names)):
                 node = profile_nodes[i]
@@ -349,6 +407,16 @@ def build_pipeline(fastq=None,
                         disconnect(node, cnode)
                         connect(normer["normed_{}".format(i+1)],
                                 cnode)
+                if N7:
+                    node_N7 = profile_nodes_N7[i]
+                    connected_nodes_N7 = list(node_N7.output_nodes)
+                    for cnode_N7 in connected_nodes_N7:
+                        if cnode_N7.parent_component is not normer_N7:
+                            disconnect(node_N7, cnode_N7)
+                            connect(normer_N7["normed_{}".format(i+1)],
+                                    cnode_N7)
+                       
+
 
     mp_comps = pipeline.collect_low_level_components(name="MutationParser*")
     mr_comps = pipeline.collect_low_level_components(name="MutationRendererPs")
@@ -377,6 +445,7 @@ def build_pipeline(fastq=None,
         pipeline.temp = temp
     pipeline.structured_output = structured_output
     pipeline.serial = serial
+    pipeline.dms=dms
     pipeline.verbose = verbose
 
     pipeline.flowchart_path = os.path.join(pipeline.out,
@@ -405,13 +474,15 @@ def build_pipeline(fastq=None,
                 p = c.parent_component
                 newc = split_to_file_wrapper(c)
                 p.replace(c, newc)
-        if output_aligned:
+
+        if output_aligned and not pipeline.dms:
             aligner_components = [c for c in pipeline.collect_low_level_components(name="*Aligner*")
                                   if "CorrectSequence" not in c.get_parent_names()]
             for c in aligner_components:
                 p = c.parent_component
                 newc = split_to_file_wrapper(c)
                 p.replace(c, newc)
+
         if output_parsed:
             parser_components = [c for c in pipeline.collect_low_level_components(name="MutationParser*")
                                  if "CorrectSequence" not in c.get_parent_names()]
@@ -446,7 +517,17 @@ def build_pipeline(fastq=None,
                           render_mutations=render_mutations,
                           dms=dms)
 
+
     return pipeline
+
+
+def delete_temp_files(pipeline, temp):
+   """
+   Removes the temp files unless otherwise specified
+   """
+   print("temp: {}".format(temp))
+   print("pipeline.temp: {}".format(pipeline.temp))
+   shutil.rmtree(pipeline.temp)
 
 
 def move_output_files(pipeline,
@@ -571,8 +652,10 @@ def move_output_files(pipeline,
                 else:
                     node.input_node.input_node.set_file(filename)
 
+            
+
     # aligned reads
-    if output_aligned:
+    if output_aligned and pipeline.serial:
         comps = [c for c in pipeline.collect_low_level_components(name="*Aligner*")
                  if "CorrectSequence" not in c.get_parent_names()]
         for i, comp in enumerate(comps):
@@ -587,12 +670,8 @@ def move_output_files(pipeline,
                 filename = os.path.join(pipeline.out,
                                         pipeline.name+'_'+sample+'_aligned_'+paired+'.'+extension)
 
-            if not pipeline.serial:
-                # locate the split to file node, not the in memory pipe
-                c = comp.aligned.output_nodes[0].output_nodes[0].parent_component.to_file
-                c.set_file(filename)
-            else:
-                comp.aligned.set_file(filename)
+            comp.aligned.set_file(filename)
+
 
     # parsed mutations
     if output_parsed:
@@ -601,8 +680,14 @@ def move_output_files(pipeline,
                 continue
             sample = comp.assoc_sample
             rna = sanitize(comp.assoc_rna)
-            filename = os.path.join(pipeline.out,
-                                    pipeline.name+'_'+sample+'_'+rna+'_parsed.mut')
+
+            if "GA" in comp.get_name():
+               filename = os.path.join(pipeline.out,
+                                       pipeline.name+'_'+sample+'_'+rna+'_parsed.mutga')
+            else:
+               filename = os.path.join(pipeline.out,
+                                       pipeline.name+'_'+sample+'_'+rna+'_parsed.mut')
+
             if not pipeline.serial:
                 # locate the split to file node, not the in memory pipe
                 # - jeebus this is ugly. need a cleaner stream splitter interface

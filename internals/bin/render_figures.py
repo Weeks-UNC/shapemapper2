@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Given:
  summary tab delimited file
@@ -84,7 +83,7 @@ def load_primers(filename):
     if filename is None or filename == "":
         return []
 
-    f = open(filename, "rU")
+    f = open(filename, "r")
     primers = []
     for line in f:
         if line[0] == '>' or len(line) < 1:
@@ -264,9 +263,6 @@ def qc_stats(seq,
                 msg += '{}\t{:.6}\n'.format(p, d)
             msg += '\n'
             print(msg)
-        #diff_85th = percentile(good_diff, 85)
-        #msg = "85th percentile diff rate: {}\n".format(diff_85th)
-        #print(msg)
 
         high_bg = np.full((len(rx_depth),), False, dtype=bool)
         for i in range(len(high_bg)):
@@ -351,18 +347,23 @@ def qc_stats(seq,
 def qc_stats_dms(seq,
                 rx_rate, bg_rate, dc_rate,
                 rx_depth, bg_depth, dc_depth,
+                n_rate,
                 min_depth, max_bg,
                 min_depth_pass,
                 max_high_bg,
                 min_positive,
                 min_high_mut):
     
-
-    high_mut_thresh = {'A':0.02, 'C':0.02, 'U':0.005, 'G':0.002}
+    high_mut_thresh = {'A':0.05, 'C':0.05, 'U':0.01, 'G':0.002}
 
 
     print("\nDMS mode quality control checks:")
     print("--------------------------------")
+
+    if rx_rate is None and bg_rate is not None:
+        # Only bg coverage
+        print("FAIL: no reads from modified treatment mapped to this RNA")
+        return False
     if rx_rate is None and bg_rate is None and dc_rate is None:
         # no coverage at all
         print("FAIL: no reads mapped to this RNA") 
@@ -438,14 +439,8 @@ def qc_stats_dms(seq,
             print(msg)
 
 
-
-        if num_depth_pass < 20:
-            overall_pass[nt] = False
-            print("FAIL: Normalization unreliable due to low number of measured nucleotides!")
-            print("      Consider including another RNA as a normalization control")
-
         # check high background positions
-        elif bg_rate is not None:
+        if bg_rate is not None and num_depth_pass > 20:
         
             num_high_bg = sum(bg_rate[overall_mask] > max_bg)
             high_bg_frac = num_high_bg/float(num_depth_pass)
@@ -485,7 +480,8 @@ def qc_stats_dms(seq,
                 msg += "      modified and untreated samples.\n"
                 print(msg)
 
-        else:            
+        if num_depth_pass > 20:
+            
             num_high_mut = np.sum(diff[overall_mask] > high_mut_thresh[nt])
             num_inv_high_mut = np.sum(diff[overall_mask] < -high_mut_thresh[nt])
             
@@ -498,16 +494,38 @@ def qc_stats_dms(seq,
 
             if high_mut_frac >= min_high_mut:
                 if inv_high_mut_frac < min_high_mut:
-                    print("PASS: The expected number of nucleotides (or more) are highly reactive")
+                    print("PASS: The expected number of nucleotides (or more) are highly reactive\n")
                 else:
                     overall_pass[nt] = False
                     print("FAIL: modified and untreated samples might be swapped\n")
             else:
                 overall_pass[nt] = False
-                print("FAIL:  Lower than expected reactivity")
+                print("FAIL:  Lower than expected reactivity\n")
 
     
+        print("Normalized rate check:")
+        mask = np.char.isupper(seq) & (seq == nt)
+        if n_rate is None or sum(np.isfinite(n_rate[mask])) == 0:
+            msg = "FAIL: No finite normalized rates present.\n"
+            msg +=  "      This is either due to the nucleotide failing to\n"
+            msg +=  "      pass the normalization factor cutoff of at least\n"
+            msg +=  "      0.002 or due to the nucleotide having less than\n"
+            msg +=  "      20 nucleotides with quality reactivity information.\n"
+            msg +=  "      Please refer to the NormProfile section of this log\n"
+            msg +=  "      file for clarification\n"
+            overall_pass[nt] = False
+
+        else:
+            msg = "PASS: Finite normalized rates present.\n"
+
+        print(msg)
+
     print("\n-----------------------------------------------------------------")
+
+    print("\n      Nucleotide passes all quality control checks: ")
+    for nt in ('A','C','U','G'):
+        print("        {}: {}".format(nt, overall_pass[nt]))
+    print("\n")
 
     if (not overall_pass['U'] or not overall_pass['G']) and (overall_pass['A'] or overall_pass['C']):
         msg = "      G and/or U FAILURE, but other reactivities may be usable\n"
@@ -537,14 +555,294 @@ def qc_stats_dms(seq,
     return all(overall_pass.values())
 
 
+def reactivity_graph(ax, name, yMin, ymax, num, no_mapped, reactivity, orange_thresh, red_thresh, seq, qc_pass = None, qc_pass_n7=None, dms = False, N7 = False, fileout=None, message = None, N7_reformat = None):
+    if not N7:
+       axtitle = ax.set_title(name, horizontalalignment="left", fontsize=16)
+       x,y = axtitle.get_position()
+       axtitle.set_position((0,y))
+    ax.set_ylim(yMin,ymax)
+    ax.set_xlim(1,len(num))
+
+
+    ax.yaxis.grid(True)
+    ax.set_axisbelow(True)
+
+    if dms:
+      if not N7:
+         yticks = np.linspace(0, 1.4, 8)
+         yticks = [round(tick, 1) for tick in yticks]
+         ax.set_yticks(yticks)
+      else:
+         yticks = [0, 1.6, 2.3, 3.3]
+         ax.set_yticks(yticks)
+    else:
+       yticks = np.linspace(-.5, 4, 10)
+       ax.set_yticks(yticks)
+
+
+    if not qc_pass and qc_pass != None:
+        msg = "Note: possible data quality issue - see log file"
+        return_flag = False
+        if no_mapped:
+            msg = "ERROR: no reads mapped to this RNA"
+            return_flag = True
+
+        txt = plt.text(30,573,
+                 msg,
+                 ha='left', va='top',
+                 fontsize=16, color='red',
+                 transform=mp.transforms.IdentityTransform())
+        if return_flag:
+            plt.savefig(fileout)
+            return 
+
+
+    if qc_pass_n7 != None:
+       if qc_pass_n7 == "empty":
+         print("Normalized N7 data appears to be empty - see log file and ga-profile")
+         if N7:
+            msg = "Note: Normalized N7 data appears to be empty - see log file and ga-profile"
+            txt_n7 = plt.text(60, 350,
+                     msg,
+                     ha='left', va='top',
+                     fontsize=11, color='red',
+                     transform=mp.transforms.IdentityTransform())
+
+
+    ax.spines["right"].set_visible(False)
+    ax.spines["top"].set_visible(False)
+    for loc, spine in ax.spines.items():
+        if loc == 'bottom':
+            spine.set_position(('outward', 6))  # move outward (down) 6 pts
+    for loc, spine in ax.spines.items():
+        if loc == 'left':
+            spine.set_position(('outward', 6))  # move outward (left) 6 pts
+
+    if dms:
+        if not N7:
+           if N7_reformat:
+              axylabel = ax.set_ylabel("DMS Rctvty(N1,3)", horizontalalignment="left", fontsize=10)
+           else:
+              axylabel = ax.set_ylabel("DMS Reactivity(N1,3)", horizontalalignment="left", fontsize=14)
+        else:
+           axylabel = ax.set_ylabel("DMS Rcvty(N7)", horizontalalignment="left", fontsize=10)
+    else:
+        axylabel = ax.set_ylabel("Shape Reactivity", horizontalalignment="left", fontsize=14)
+    x,y = axylabel.get_position()
+    axylabel.set_position((x,0))
+
+    if reactivity is not None:
+        # add a SHAPE colorbar to the vertical axis
+        # uses a little transformation magic to place correctly
+        inv = ax.transData.inverted()
+        for loc, spine in ax.spines.items():
+            if loc == 'left':
+                trans = spine.get_transform()
+        pt = trans.transform_point([0,0])
+        pt2 = inv.transform_point(pt)
+        rectX = pt2[0]
+        ptA = (0,0)
+        ptB = (6,0)
+        ptA2 = inv.transform_point(ptA)
+        ptB2 = inv.transform_point(ptB)
+        rectW = ptB2[0]-ptA2[0]
+        
+        if dms:
+            if not N7:
+               rect1 = Rectangle((rectX,-0.1), rectW, orange_thresh-yMin, facecolor="black", edgecolor="none")
+               rect2 = Rectangle((rectX,orange_thresh), rectW, red_thresh-orange_thresh, facecolor="orange", edgecolor="none")
+               rect3 = Rectangle((rectX,red_thresh), rectW, 1.4-red_thresh, facecolor="red", edgecolor="none")
+
+            else:
+               rect1 = Rectangle((rectX,-0.22), rectW, orange_thresh-yMin, facecolor="black", edgecolor="none")
+               rect2 = Rectangle((rectX,orange_thresh), rectW, red_thresh-orange_thresh, facecolor="pink", edgecolor="none")
+               rect3 = Rectangle((rectX,red_thresh), rectW, 3.3-red_thresh, facecolor="purple", edgecolor="none")
+
+
+
+        else:
+            rect1 = Rectangle((rectX,-0.5), rectW, orange_thresh+0.5, facecolor="black", edgecolor="none")
+            rect2 = Rectangle((rectX,orange_thresh), rectW, red_thresh-orange_thresh, facecolor="orange", edgecolor="none")
+            rect3 = Rectangle((rectX,red_thresh), rectW, 4-red_thresh, facecolor="red", edgecolor="none")
+        
+        ax.add_patch(rect1)
+        rect1.set_clip_on(False)
+        ax.add_patch(rect2)
+        rect2.set_clip_on(False)
+        ax.add_patch(rect3)
+        rect3.set_clip_on(False)
+
+
+    ax.get_xaxis().tick_bottom()   # remove unneeded ticks
+    ax.get_yaxis().tick_left()
+
+    ax.tick_params(axis='y',which='minor',left='off')
+    if N7_reformat:
+      ax.tick_params(axis='y',which='major', labelsize = 9)
+
+    yticks = ax.get_yticks()
+    stripped_ticks = [str(val).rstrip('0').rstrip('.') for val in yticks]
+    ax.set_yticklabels(stripped_ticks)
+
+    for line in ax.get_yticklines():
+        line.set_markersize(6)
+        line.set_markeredgewidth(1)
+
+    for line in ax.get_xticklines():
+        line.set_markersize(7)
+        line.set_markeredgewidth(2)
+
+    for line in ax.xaxis.get_ticklines(minor=True):
+        line.set_markersize(5)
+        line.set_markeredgewidth(1)
+
+    font_prop = mp.font_manager.FontProperties(family = "monospace", style="normal",weight="bold",size="4.5")
+    for i in range(seq.shape[0]):
+        nuc = seq[i]
+        if nuc == "T":
+            nuc = "U"
+        color_dict = {"A": "#f20000",
+                      "U": "#f28f00",
+                      "G": "#00509d",
+                      "C": "#00c200"}
+        if nuc in color_dict:
+            col = color_dict[nuc]
+        elif nuc.upper() in color_dict:
+            col = color_dict[nuc.upper()]
+        else:
+            col = "black"
+
+        if dms:
+            if not N7:
+               ax.annotate(nuc, xy=(i+1, yMin-0.08),fontproperties=font_prop,color=col,annotation_clip=False, horizontalalignment="center")
+            else:
+               ax.annotate(nuc, xy=(i+1, yMin-0.19),fontproperties=font_prop,color=col,annotation_clip=False, horizontalalignment="center")
+        else:
+            ax.annotate(nuc, xy=(i+1, -0.67),fontproperties=font_prop,color=col,annotation_clip=False, horizontalalignment="center")
+
+
+    if message != None:
+       warnings = message.split(",")
+       if  "low N7" in warnings:
+         print("Warning: Unusually low raw N7 reactivity. Consequently, N7 reactivity profiles will not be plotted.\nPlease double check experimental procedure.\n   - This may be caused by highly structured RNA. In this case passing --ignore_low_n7\n    will ignore this QC and plot the N7 data / produce the .mutga file(s) regardless.")
+         msg = "Warning: Unusually low raw N7 reactivity. No subplot generated. Please refer to log file."
+         txt_n7 = plt.text(60, 347,
+                  msg,
+                  ha='left', va='top',
+                  fontsize=11, color='red',
+                  transform=mp.transforms.IdentityTransform())
+
+
+def mut_graph(ax, dms, num, rx_rates, bg_rates, dc_rates, rx_lower, rx_upper, bg_lower, bg_upper, dc_lower, dc_upper, legend_labels, ymax, N7 = False, N7_reformat = None, message = None):
+
+    mute = False
+    if message != None:
+       warnings = message.split(",")
+       if  "low N7" in warnings:
+         mute = True
+
+
+    if dms:
+        if not N7:
+           if N7_reformat:
+              axylabel = ax.set_ylabel("Mut. Rt.(N1,3)(%)", horizontalalignment="left", fontsize=10)
+           else:
+              axylabel = ax.set_ylabel("Mutation Rate(N1,3)(%)", horizontalalignment="left", fontsize=14)
+        else:
+           axylabel = ax.set_ylabel("Mut. Rt.(N7)(%)", horizontalalignment="left", fontsize=10)
+    else:
+        axylabel = ax.set_ylabel("Mutation rate(%)", horizontalalignment="left", fontsize=14)
+    x,y = axylabel.get_position()
+    axylabel.set_position((x,0))
+
+
+    handles = []
+    if not N7:
+       h, = ax.plot(num, rx_rates, zorder=3, color=rx_color, linewidth=1.5)
+       handles.append(h)
+       h, = ax.plot(num, bg_rates, zorder=2, color=bg_color, linewidth=1.5)
+       handles.append(h)
+       h, = ax.plot(num, dc_rates, zorder=2, color=dc_color, linewidth=1.5)
+       handles.append(h)
+
+       ax.fill_between(num, rx_lower, rx_upper, edgecolor="none", alpha=0.5, facecolor=rx_color)
+       ax.fill_between(num, bg_lower, bg_upper, edgecolor="none", alpha=0.5, facecolor=bg_color)
+       ax.fill_between(num, dc_lower, dc_upper, edgecolor="none", alpha=0.5, facecolor=dc_color)
+    elif not mute:
+       h, = ax.plot(num, rx_rates, zorder=3, color="purple", linewidth=1.5)
+       handles.append(h)
+       h, = ax.plot(num, bg_rates, zorder=2, color="pink", linewidth=1.5)
+       handles.append(h)
+       h, = ax.plot(num, dc_rates, zorder=2, color=dc_color, linewidth=1.5)
+       handles.append(h)
+       ax.fill_between(num, rx_lower, rx_upper, edgecolor="none", alpha=0.5, facecolor="purple")
+       ax.fill_between(num, bg_lower, bg_upper, edgecolor="none", alpha=0.5, facecolor="pink")
+       ax.fill_between(num, dc_lower, dc_upper, edgecolor="none", alpha=0.5, facecolor=dc_color)
+       ax.legend(handles, legend_labels, loc=2, borderpad=0.8, handletextpad=0.2, framealpha=0.60)
+
+    ax.set_xlim((1,len(rx_rates)))
+    ax.set_ylim((0,ymax))
+    if dms and False:
+        ax.set_ylim((1e-4, max(max(rx_rates), max(bg_rates))))
+        ax.set_yscale('log')
+
+    ax.spines["right"].set_visible(False)
+    ax.spines["top"].set_visible(False)
+    ax.get_xaxis().tick_bottom()   # remove unneeded ticks
+    ax.get_yaxis().tick_left()
+
+    ax.tick_params(axis='y',which='minor',left='off')
+    if N7_reformat:
+       ax.tick_params(axis='y',which='major', labelsize = 9)
+
+    if dms:
+      if not N7:
+         ax.set_ylim(0, .16)
+         ax.set_yticks(np.linspace(0, .16, num = 9))
+      else:
+         ax.set_ylim(0, .08)
+         ax.set_yticks(np.linspace(0, .08, num = 9))
+
+    ticks = [x*100 for x in ax.get_yticks()]
+    ticks = [int(tick) for tick in ticks]
+    ax.set_yticklabels([str(val) for val in ticks])
+
+
+    for line in ax.get_yticklines():
+        line.set_markersize(6)
+        line.set_markeredgewidth(1)
+
+    for line in ax.get_xticklines():
+        line.set_markersize(7)
+        line.set_markeredgewidth(2)
+
+    for line in ax.xaxis.get_ticklines(minor=True):
+        line.set_markersize(5)
+        line.set_markeredgewidth(1)
+
+    ax.yaxis.grid(True)
+    ax.set_axisbelow(True)
+
 
 
 def render_profiles(num, seq, reactivity, stderr,
                     rx_rates, bg_rates, dc_rates,
                     rx_depth, bg_depth, dc_depth,
                     rx_simple_depth, bg_simple_depth, dc_simple_depth,
-                    fileout, name, qc_pass, dms=False):
+                    fileout, name, qc_pass,
+ 
+                    numN = None , seqN = None , reactivityN = None , stderrN = None ,
+                    rx_ratesN = None , bg_ratesN = None , dc_ratesN = None ,
+                    rx_depthN = None , bg_depthN = None , dc_depthN = None ,
+                    rx_simple_depthN = None , bg_simple_depthN = None , dc_simple_depthN = None ,
+
+                    dms=False, N7=None, qc_pass_n7=None, message = None):
     # FIXME: this is fairly ugly code - should at least break each panel into a separate func
+    # TODO: Route all the N stuff through all the pre - processing
+
+
+    if N7 != None:
+      N7_reformat = True
 
     if rx_rates is None and bg_rates is None and dc_rates is None:
         no_mapped = True
@@ -555,47 +853,110 @@ def render_profiles(num, seq, reactivity, stderr,
     if rx_rates is not None:
         legend_labels.append("Modified")
         rx_err = sqrt(rx_rates) / sqrt(rx_depth)
+        if N7 != None:
+           rx_errN = sqrt(rx_ratesN) / sqrt(rx_depthN)
     else:
         rx_rates = np.zeros((len(rx_depth),))
+        if N7 != None:
+           rx_ratesN = np.zeros((len(rx_depthN),))
         rx_err = np.zeros((len(rx_depth),))
+        if N7 != None:
+           rx_errN = np.zeros((len(rx_depthN),))
     if bg_rates is not None:
         legend_labels.append("Untreated")
         bg_err = sqrt(bg_rates) / sqrt(bg_depth)
+        if N7 != None:
+           bg_errN = sqrt(bg_ratesN) / sqrt(bg_depthN)
     else:
         bg_rates = np.zeros((len(rx_depth),))
+        if N7 != None:
+           bg_ratesN = np.zeros((len(rx_depthN),))
         bg_err = np.zeros((len(rx_depth),))
+        if N7 != None:
+           bg_errN = np.zeros((len(rx_depthN),))
     if dc_rates is not None:
         legend_labels.append("Denatured")
         dc_err = sqrt(dc_rates) / sqrt(dc_depth)
+        if N7 != None:
+           dc_errN = sqrt(dc_ratesN) / sqrt(dc_depthN)
     else:
         dc_rates = np.zeros((len(rx_depth),))
+        if N7 != None:
+           dc_ratesN = np.zeros((len(rx_depthN),))
         dc_err = np.zeros((len(rx_depth),))
+        if N7 != None:
+           dc_errN = np.zeros((len(rx_depthN),))
 
     # Add a zeroeth nuc so axis numbering works correctly
     # There's probably a better way to do this
     num = np.append(0, num)
+    #print("This is the zeroeth nucleotide addition step. Num: {}".format(num))
+    if N7 != None:
+       numN = np.append(0, numN)
+
     if reactivity is not None:
         reactivity = np.append(0, reactivity)
         stderr = np.append(0, stderr)
+        if N7 != None:
+           reactivityN = np.append(0, reactivityN)
+           stderrN = np.append(0, stderrN)
+    if reactivity is None:
+        print("Reactivity is none.")
 
+
+
+    #TODO: Combine this all into one conditional...
     rx_depth = np.append(0, rx_depth)
+    if N7 != None: 
+       rx_depthN = np.append(0, rx_depthN)
     bg_depth = np.append(0, bg_depth)
+    if N7 != None: 
+       bg_depthN = np.append(0, bg_depthN)
     dc_depth = np.append(0, dc_depth)
+    if N7 != None: 
+       dc_depthN = np.append(0, dc_depthN)
     rx_simple_depth = np.append(0, rx_simple_depth)
+    if N7 != None: 
+       rx_simple_depthN = np.append(0, rx_simple_depthN)
     bg_simple_depth = np.append(0, bg_simple_depth)
+    if N7 != None: 
+       bg_simple_depthN = np.append(0, bg_simple_depthN)
     dc_simple_depth = np.append(0, dc_simple_depth)
+    if N7 != None: 
+       dc_simple_depthN = np.append(0, dc_simple_depthN)
     rx_rates = np.append(0, rx_rates)
+    if N7 != None: 
+       rx_ratesN = np.append(0, rx_ratesN)
     bg_rates = np.append(0, bg_rates)
+    if N7 != None: 
+       bg_ratesN = np.append(0, bg_ratesN)
     dc_rates = np.append(0, dc_rates)
+    if N7 != None: 
+       dc_ratesN = np.append(0, dc_ratesN)
     rx_err = np.append(0, rx_err)
+    if N7 != None: 
+       rx_errN = np.append(0, rx_errN)
     bg_err = np.append(0, bg_err)
+    if N7 != None: 
+       bg_errN = np.append(0, bg_errN)
     dc_err = np.append(0, dc_err)
+    if N7 != None: 
+       dc_errN = np.append(0, dc_errN)
 
+
+
+    orange_thresh = 0
+    red_thresh = 0  
+    orange_threshN = 0
+    red_threshN = 0  
     if reactivity is not None:
 
         if dms:
-            orange_thresh = 0.15
+            orange_thresh = 0.2
             red_thresh = 0.4
+            if N7 != None:
+               orange_threshN = 1.6
+               red_threshN = 2.3
         else:
             orange_thresh = 0.4
             red_thresh = 0.85
@@ -612,6 +973,25 @@ def render_profiles(num, seq, reactivity, stderr,
         red_vals = []
         red_nums = []
         red_errs = []
+
+        if N7 != None:
+           gray_valsN = []
+           gray_numsN = []
+           gray_errsN = []
+           black_valsN = []
+           black_numsN = []
+           black_errsN = []
+           orange_valsN = []
+           orange_numsN = []
+           orange_errsN = []
+           red_valsN = []
+           red_numsN = []
+           red_errsN = []
+
+
+
+
+
         for i in range(len(reactivity)):
             if isnan(reactivity[i]):
                 gray_vals.append(-1)
@@ -629,9 +1009,43 @@ def render_profiles(num, seq, reactivity, stderr,
                 red_vals.append(reactivity[i])
                 red_nums.append(num[i])
                 red_errs.append(stderr[i])
+
+
+        if N7 != None:
+            
+           # If empty, trigger QC
+           if (None in reactivityN) or (len(reactivityN) <= 2):
+              reactivityN = [0]
+              qc_pass_n7="empty"
+           # Else, change small reactivities to allow for visualization
+           else:
+               print("reactivityN: ", reactivityN)
+               reactivityN[reactivityN < 0] = .2 
+
+           for i in range(len(reactivityN)):
+               if isnan(reactivityN[i]):
+                   gray_valsN.append(-1)
+                   gray_numsN.append(numN[i])
+                   gray_errsN.append(0)
+               elif reactivityN[i] < orange_threshN:
+                   black_valsN.append(reactivityN[i])
+                   black_numsN.append(numN[i])
+                   black_errsN.append(stderrN[i])
+               elif reactivityN[i] < red_threshN:
+                   orange_valsN.append(reactivityN[i])
+                   orange_numsN.append(numN[i])
+                   orange_errsN.append(stderrN[i])
+               else:
+                   red_valsN.append(reactivityN[i])
+                   red_numsN.append(numN[i])
+                   red_errsN.append(stderrN[i])
+
+
     
     if dms:
         yMin, ymax = (-0.1, 1.5)
+        if N7 != None: 
+           yMinN, ymaxN = (-.22, 3.3)
     else:
         yMin, ymax = (-0.5, 4)
     
@@ -643,14 +1057,24 @@ def render_profiles(num, seq, reactivity, stderr,
 
     left_percent = left_inches/fig_width
     right_percent = 1-right_inches/fig_width
-    ax1 = plt.subplot(311)
-    ax2 = plt.subplot(313)
-    ax3 = plt.subplot(312)
-    plt.subplots_adjust(hspace=0.5, left=left_percent,right=right_percent,top=0.94)
+    #3 rows, 1 column, which figure it is
+    if N7 != None:
+       ax1 = plt.subplot(511)
+       ax2 = plt.subplot(515)
+       ax3 = plt.subplot(512)
+       ax4 = plt.subplot(513)
+       ax5 = plt.subplot(514)
+       plt.subplots_adjust(hspace=0.7, left=left_percent,right=right_percent,top=0.94)
+    else:
+       ax1 = plt.subplot(311)
+       ax2 = plt.subplot(313)
+       ax3 = plt.subplot(312)    
+       plt.subplots_adjust(hspace=0.5, left=left_percent,right=right_percent,top=0.94)
 
     near_black = (0,0,1/255.0)
 
-    if reactivity is not None:
+
+    if reactivity is not  None:
         if len(gray_nums)>0:
             ax1.bar(gray_nums,gray_vals,
                      align="center",
@@ -670,154 +1094,40 @@ def render_profiles(num, seq, reactivity, stderr,
                      align="center",
                      width=1.05,color="red",edgecolor="red",linewidth=0.0,
                      yerr=red_errs,ecolor=near_black,capsize=1)
-
-    ax1title = ax1.set_title(name, horizontalalignment="left", fontsize=16)
-    x,y = ax1title.get_position()
-    ax1title.set_position((0,y))
-    ax1.set_ylim(yMin,ymax)
-    ax1.set_xlim(1,len(num))
-    #ax1.set_yticks(fontsize=9)
-
-    yticks=ax1.get_yticks()
-    if dms:
-      yticks = np.linspace(0, 1.4, 8)
-      yticks = [round(tick, 1) for tick in yticks]
-      ax1.set_yticks(yticks)
-    else:
-      yticks = np.linspace(-.5, 4, 10)
-      ax1.set_yticks(yticks)
-
     
+    mute = False
+    if message != None:
+       warnings = message.split(",")
+       if  "low N7" in warnings:
+         mute = True
 
-    if not qc_pass:
-        msg = "Note: possible data quality issue - see log file"
-        return_flag = False
-        if no_mapped:
-            msg = "ERROR: no reads mapped to this RNA"
-            return_flag = True
+    if N7 !=  None:
+       if reactivity is not None and not mute:
+           if len(gray_numsN)>0:
+               ax4.bar(gray_numsN,gray_valsN,
+                        align="center",
+                        width=1.05, color="0.80", edgecolor="0.80",linewidth=0.0)
+           if len(black_numsN)>0:
+               ax4.bar(black_numsN,black_valsN,
+                        align="center",
+                        width=1.05, color="black", edgecolor="black",linewidth=0.0,
+                        ecolor=near_black,capsize=1)
+           if len(orange_numsN)>0:
+               ax4.bar(orange_numsN,orange_valsN,
+                        align="center",
+                        width=1.05, color="pink",edgecolor="pink",linewidth=0.0,
+                        ecolor=near_black,capsize=1)
+           if len(red_numsN)>0:
+               ax4.bar(red_numsN,red_valsN,
+                        align="center",
+                        width=1.05,color="purple",edgecolor="purple",linewidth=0.0,
+                        ecolor=near_black,capsize=1)
 
-        txt = plt.text(30,573,
-                 msg,
-                 ha='left', va='top',
-                 fontsize=16, color='red',
-                 transform=mp.transforms.IdentityTransform())
-        if return_flag:
-            plt.savefig(fileout)
-            return 
-
-    #tickNums = range(num[0]+10,num[-1]+1,10)
-    #tickPos = range(num[0]+9,num[-1],10)
-    #ax1.set_xticks(tickPos,tickNums,fontsize=9,rotation=30)
-    #ax1.set_xticks(fontsize=9)
-
-    ax1.yaxis.grid(True)
-    ax1.set_axisbelow(True)
-
-    ax1.spines["right"].set_visible(False)
-    ax1.spines["top"].set_visible(False)
-    for loc, spine in ax1.spines.items():
-        if loc == 'bottom':
-            spine.set_position(('outward', 6))  # move outward (down) 6 pts
-            #spine.set_smart_bounds(True)
-    for loc, spine in ax1.spines.items():
-        if loc == 'left':
-            spine.set_position(('outward', 6))  # move outward (left) 6 pts
-            #spine.set_smart_bounds(True)
-
-    # need to add labels after moving spines, otherwise they will disappear
-    ax1xlabel = ax1.set_xlabel("Nucleotide", horizontalalignment="left", fontsize=14, labelpad=0)
-    x,y = ax1xlabel.get_position()
-    ax1xlabel.set_position((0,y))
-    
-    if dms:
-        ax1ylabel = ax1.set_ylabel("DMS Reactivity", horizontalalignment="left", fontsize=14)
-    else:
-        ax1ylabel = ax1.set_ylabel("Shape Reactivity", horizontalalignment="left", fontsize=14)
-    x,y = ax1ylabel.get_position()
-    ax1ylabel.set_position((x,0))
-
-    if reactivity is not None:
-        # add a SHAPE colorbar to the vertical axis
-        # uses a little transformation magic to place correctly
-        inv = ax1.transData.inverted()
-        for loc, spine in ax1.spines.items():
-            if loc == 'left':
-                trans = spine.get_transform()
-        pt = trans.transform_point([0,0])
-        pt2 = inv.transform_point(pt)
-        rectX = pt2[0]
-        ptA = (0,0)
-        ptB = (6,0)
-        ptA2 = inv.transform_point(ptA)
-        ptB2 = inv.transform_point(ptB)
-        rectW = ptB2[0]-ptA2[0]
-        
-        if dms:
-            rect1 = Rectangle((rectX,-0.1), rectW, orange_thresh-yMin, facecolor="black", edgecolor="none")
-            rect2 = Rectangle((rectX,orange_thresh), rectW, red_thresh-orange_thresh, facecolor="orange", edgecolor="none")
-            #rect3 = Rectangle((rectX,red_thresh), rectW, 2-red_thresh, facecolor="red", edgecolor="none")
-            rect3 = Rectangle((rectX,red_thresh), rectW, 1, facecolor="red", edgecolor="none")
-        else:
-            rect1 = Rectangle((rectX,-0.5), rectW, orange_thresh+0.5, facecolor="black", edgecolor="none")
-            rect2 = Rectangle((rectX,orange_thresh), rectW, red_thresh-orange_thresh, facecolor="orange", edgecolor="none")
-            rect3 = Rectangle((rectX,red_thresh), rectW, 4-red_thresh, facecolor="red", edgecolor="none")
-        
-        ax1.add_patch(rect1)
-        rect1.set_clip_on(False)
-        ax1.add_patch(rect2)
-        rect2.set_clip_on(False)
-        ax1.add_patch(rect3)
-        rect3.set_clip_on(False)
-
-
-    ax1.get_xaxis().tick_bottom()   # remove unneeded ticks
-    ax1.get_yaxis().tick_left()
-
-    ax1.tick_params(axis='y',which='minor',left='off')
-    #ax1.tick_params(axis='x',which='minor')
-
-    #ax1.minorticks_on()
-
-    yticks = ax1.get_yticks()
-    stripped_ticks = [str(val).rstrip('0').rstrip('.') for val in yticks]
-    ax1.set_yticklabels(stripped_ticks)
-
-    for line in ax1.get_yticklines():
-        line.set_markersize(6)
-        line.set_markeredgewidth(1)
-
-    for line in ax1.get_xticklines():
-        line.set_markersize(7)
-        line.set_markeredgewidth(2)
-
-    for line in ax1.xaxis.get_ticklines(minor=True):
-        line.set_markersize(5)
-        line.set_markeredgewidth(1)
-
-
-    # put nuc sequence below axis
-    font_prop = mp.font_manager.FontProperties(family = "monospace", style="normal",weight="bold",size="4.5")
-    for i in range(seq.shape[0]):
-        nuc = seq[i]
-        if nuc == "T":
-            nuc = "U"
-        color_dict = {"A": "#f20000",
-                      "U": "#f28f00",
-                      "G": "#00509d",
-                      "C": "#00c200"}
-        if nuc in color_dict:
-            col = color_dict[nuc]
-        elif nuc.upper() in color_dict:
-            col = color_dict[nuc.upper()]
-        else:
-            col = "black"
-
-        if dms:
-            ax1.annotate(nuc, xy=(i+1, yMin-0.08),fontproperties=font_prop,color=col,annotation_clip=False, horizontalalignment="center")
-            #ax2.annotate(nuc, xy=(i+1, -0.1),fontproperties=font_prop,color=col,annotation_clip=False, horizontalalignment="center")
-        else:
-            ax1.annotate(nuc, xy=(i+1, -0.67),fontproperties=font_prop,color=col,annotation_clip=False, horizontalalignment="center")
-
+    if N7 != None:
+         reactivity_graph(ax1, name, yMin, ymax, num, no_mapped, reactivity, orange_thresh, red_thresh, seq, dms = dms, qc_pass = qc_pass, fileout=fileout, N7_reformat = N7_reformat)
+         reactivity_graph(ax4, name, yMinN, ymaxN, numN, no_mapped, reactivityN, orange_threshN, red_threshN, seqN, dms = dms, N7 = True, qc_pass_n7=qc_pass_n7, fileout=fileout, message = message, N7_reformat = N7_reformat)
+    else: 
+         reactivity_graph(ax1, name, yMin, ymax, num, no_mapped, reactivity, orange_thresh, red_thresh, seq, dms = dms, qc_pass = qc_pass, fileout=fileout)
 
     handles = []
     h, = ax2.plot(num, rx_simple_depth, linewidth = 1.5, color=rx_color, alpha=1.0)
@@ -830,34 +1140,22 @@ def render_profiles(num, seq, reactivity, stderr,
     ax2.plot(num, dc_depth, linewidth = 1.0, color=dc_color, alpha=0.3)
     handles.append(h)
     ax2.set_xlim(1,len(num))
-    #ax2.legend(["+Reagent","Background","Denatured"], bbox_to_anchor=(1.1,1.1))
-    leg = ax2.legend(handles, legend_labels, loc=2, borderpad=0.8, handletextpad=0.2, framealpha=0.75)
+    leg = ax2.legend(handles, legend_labels, loc=2, borderpad=0.8, handletextpad=0.2, framealpha=0.60)
     xmin, xmax, ymin, ymax = ax2.axis()
-    ax2.set_ylim(0,ymax)
-    #ax2.set_yscale('log')
-    #ax2.set_yscale('symlog')# useful, but disabled because of a matplotlib/pyparsing bug
-    ax2xlabel = ax2.set_xlabel("Nucleotide\n(note: effective read depths shown in lighter colors)", horizontalalignment="left", fontsize=14, labelpad=0)
-    x,y = ax2xlabel.get_position()
-    ax2xlabel.set_position((0,y))
+    ax2.set_ylim(0, ymax)
+    list_ticks = [int(y) for y in ax2.get_yticks()]
 
-    ax2.spines["right"].set_visible(False)
-    ax2.spines["top"].set_visible(False)
-    ax2.get_xaxis().tick_bottom()   # remove unneeded ticks
-    ax2.get_yaxis().tick_left()
+    yticks =  np.linspace(0, list_ticks[-1], num = 6) 
+    yticks = [int(ytick) for ytick in yticks]
 
-    #ax2.minorticks_on()
-    ax2.tick_params(axis='y',which='minor',left='off')
-    #ax2.tick_params(axis='x',which='minor')
+    ax2.set_yticks(yticks) 
 
-    #xlabels = ["%.2f"%v for v in xticks]
-    #ax3.set_xticks(xticks)
-    #ax3.set_xticklabels(xlabels,rotation = -45, horizontalalignment='left')
-
-    yticks = [int(y) for y in ax2.get_yticks()]
     formatted_ticks = []
     for val in yticks:
         formatted_ticks.append(metric_abbreviate(val))
     ax2.set_yticklabels(formatted_ticks)
+    if N7 != None:
+      ax2.tick_params(axis='y',which='major', labelsize = 9)
 
     for line in ax2.get_yticklines():
         line.set_markersize(6)
@@ -874,14 +1172,28 @@ def render_profiles(num, seq, reactivity, stderr,
     ax2.yaxis.grid(True)
     ax2.set_axisbelow(True)
 
-    ax2ylabel = ax2.set_ylabel("Read depth", horizontalalignment="left", fontsize=14)
-    x, y = ax2ylabel.get_position()
-    ax2ylabel.set_position((x, 0))
+    if N7:
+       if N7_reformat:
+         ax2ylabel = ax2.set_ylabel("Read depth", horizontalalignment="left", fontsize=10)
+         x, y = ax2ylabel.get_position()
+         ax2ylabel.set_position((x, 0))
+       else:
+         ax2ylabel = ax2.set_ylabel("Read depth", horizontalalignment="left", fontsize=14)
+         x, y = ax2ylabel.get_position()
+         ax2ylabel.set_position((x, 0))
+    else:
+      ax2ylabel = ax2.set_ylabel("Read depth", horizontalalignment="left", fontsize=14)
+      x, y = ax2ylabel.get_position()
+      ax2ylabel.set_position((x, 0))
+
+
+    ax2.set_xlabel("Nucleotide", fontsize = 12)
     # tried to make an offset, smaller font note about effective depths,
     # but couldn't get positioning/transforms to work properly.
     # For now just putting in xaxis label
 
     # choose a decent range for axis, excluding high-background positions
+
     good_indices = []
     for i in range(len(bg_rates)):
         if bg_rates[i]<=0.05 or isnan(bg_rates[i]):
@@ -894,72 +1206,53 @@ def render_profiles(num, seq, reactivity, stderr,
         if near_top_rate<maxes[i]:
             ymax = maxes[i]
 
+    if N7 != None:
+       good_indicesN = []
+       for i in range(len(bg_ratesN)):
+           if bg_ratesN[i]<=0.05 or isnan(bg_ratesN[i]):
+               good_indicesN.append(i)
+       temp_ratesN = [rx_ratesN[i] for i in good_indicesN]
+       near_top_rateN = percentile(temp_ratesN,98.0)
+       maxesN = [0.32,0.16,0.08,0.04,0.02,0.01]
+       ymaxN = maxesN[0]
+       for i in range(len(maxesN)):
+           if near_top_rateN<maxesN[i]:
+               ymaxN = maxesN[i]
+
+
+
+
+    # TODO: put this all into one conditional
     rx_upper = rx_rates + rx_err
+    if N7 != None:
+       rx_upperN = rx_ratesN + rx_errN
     rx_lower = rx_rates - rx_err
+    if N7 != None:
+       rx_lowerN = rx_ratesN - rx_errN
     bg_upper = bg_rates + bg_err
+    if N7 != None:
+       bg_upperN = bg_ratesN + bg_errN
     bg_lower = bg_rates - bg_err
+    if N7 != None:
+       bg_lowerN = bg_ratesN - bg_errN
     dc_upper = dc_rates + dc_err
+    if N7 != None:
+       dc_upperN = dc_ratesN + dc_errN
     dc_lower = dc_rates - dc_err
+    if N7 != None:
+       dc_lowerN = dc_ratesN - dc_errN
 
-    ax3xlabel = ax3.set_xlabel("Nucleotide", horizontalalignment="left", fontsize=14, labelpad=0)
-    x,y = ax3xlabel.get_position()
-    ax3xlabel.set_position((0,y))
 
-    if dms:
-        ax3ylabel = ax3.set_ylabel("Mutation rate", horizontalalignment="left", fontsize=14)
+
+    if N7 != None:
+       mut_graph(ax3, dms, num, rx_rates, bg_rates, dc_rates, rx_lower, rx_upper, bg_lower, bg_upper, dc_lower, dc_upper, legend_labels, ymax, N7_reformat=N7_reformat)
+       mut_graph(ax5, dms, numN, rx_ratesN, bg_ratesN, dc_ratesN, rx_lowerN, rx_upperN, bg_lowerN, bg_upperN, dc_lowerN, dc_upperN, legend_labels, ymaxN, N7 = True, N7_reformat = N7_reformat, message=message)
     else:
-        ax3ylabel = ax3.set_ylabel("Mutation rate (%)", horizontalalignment="left", fontsize=14)
-    x,y = ax3ylabel.get_position()
-    ax3ylabel.set_position((x,0))
+       mut_graph(ax3, dms, num, rx_rates, bg_rates, dc_rates, rx_lower, rx_upper, bg_lower, bg_upper, dc_lower, dc_upper, legend_labels, ymax)
 
-    ax3.plot(num, rx_rates, zorder=3, color=rx_color, linewidth=1.5)
-    ax3.plot(num, bg_rates, zorder=2, color=bg_color, linewidth=1.5)
-    ax3.plot(num, dc_rates, zorder=2, color=dc_color, linewidth=1.5)
-    ax3.fill_between(num, rx_lower, rx_upper, edgecolor="none", alpha=0.5, facecolor=rx_color)
-    ax3.fill_between(num, bg_lower, bg_upper, edgecolor="none", alpha=0.5, facecolor=bg_color)
-    ax3.fill_between(num, dc_lower, dc_upper, edgecolor="none", alpha=0.5, facecolor=dc_color)
-    ax3.legend(legend_labels, loc=2, borderpad=0.8, handletextpad=0.2, framealpha=0.75)
-    ax3.set_xlim((1,len(rx_rates)))
-    ax3.set_ylim((0,ymax))
-    if dms and False:
-        ax3.set_ylim((1e-4, max(max(rx_rates), max(bg_rates))))
-        ax3.set_yscale('log')
-
-    ax3.spines["right"].set_visible(False)
-    ax3.spines["top"].set_visible(False)
-    ax3.get_xaxis().tick_bottom()   # remove unneeded ticks
-    ax3.get_yaxis().tick_left()
-
-    #ax3.minorticks_on()
-    ax3.tick_params(axis='y',which='minor',left='off')
-
-    ax3.set_yticks(np.linspace(0, .16, num = 9))
-    
-    if not dms:
-        ticks = [x*100 for x in ax3.get_yticks()]
-        ticks = [int(tick) for tick in ticks]
-        ax3.set_yticklabels([str(val).rstrip('0').rstrip('.') for val in ticks])
-
-    for line in ax3.get_yticklines():
-        line.set_markersize(6)
-        line.set_markeredgewidth(1)
-
-    for line in ax3.get_xticklines():
-        line.set_markersize(7)
-        line.set_markeredgewidth(2)
-
-    for line in ax3.xaxis.get_ticklines(minor=True):
-        line.set_markersize(5)
-        line.set_markeredgewidth(1)
-
-    ax3.yaxis.grid(True)
-    ax3.set_axisbelow(True)
-
-    # TODO: add a tick for the first nuc - can't seem to add one without screwing
-    # up all the other ticks
-
+    fig.align_ylabels()
     plt.savefig(fileout)
-
+    
 
 def draw_median(ax, vals, col, int_only=False):
     xmin, xmax, ymin, ymax = ax.axis()
@@ -973,7 +1266,6 @@ def draw_median(ax, vals, col, int_only=False):
 
 def draw_percentile(ax, vals, percent, col, x1=0, x2=0, y=0, percentage=False, name=""):
     xmin, xmax, ymin, ymax = ax.axis()
-    # med = calcQuartile(vals,percentile)
     med = percentile(vals, percent)
     if percentage:
         med = med * 100
@@ -998,13 +1290,6 @@ def write_histograms(shape, stderr,
                      rx_depth, bg_depth, dc_depth,
                      fileout, name, qc_pass):
 
-    # limit rate histograms to positions included in final reactivity profile
-    #if rx_rate is not None:
-    #    rx_rate = rx_rate[np.isfinite(shape)]
-    #if bg_rate is not None:
-    #    bg_rate = bg_rate[np.isfinite(shape)]
-    #if dc_rate is not None:
-    #    dc_rate = dc_rate[np.isfinite(shape)]
 
     # limit rate histograms to uppercase sequence
     ui = np.array([False]*len(seq))
@@ -1020,6 +1305,21 @@ def write_histograms(shape, stderr,
     if dc_rate is not None:
         dc_rate = np.array(dc_rate)[ui]
         dc_depth = np.array(dc_depth)[ui]
+
+    # limit rate histograms to positions included in final reactivity profile
+    if shape is not None: # If shape is None this functionality will break
+        fin_mask = np.isfinite(shape)
+        if sum(ui) > 0:
+            fin_mask = np.isfinite(shape)[ui]
+        if rx_rate is not None:
+            rx_rate = rx_rate[fin_mask]
+            rx_depth = rx_depth[fin_mask]
+        if bg_rate is not None:
+            bg_rate = bg_rate[fin_mask]
+            bg_depth = bg_depth[fin_mask]
+        if dc_rate is not None:
+            dc_rate = dc_rate[fin_mask]
+            dc_depth = dc_depth[fin_mask]
 
     tlabel_size = 10
 
@@ -1043,8 +1343,6 @@ def write_histograms(shape, stderr,
     if len(name)<20:
         title = plt.suptitle(name,fontsize=18,horizontalalignment="left", x=0.02)
     if not qc_pass:
-        #bounds = title.get_window_extent(fig.canvas.get_renderer()).get_points()
-        #print("title bounds: {}".format(bounds))
         if len(name)<20:
             offset = len(name)*12
         else:
@@ -1060,8 +1358,6 @@ def write_histograms(shape, stderr,
                  fontsize=16, color='red',
                  transform=mp.transforms.IdentityTransform())
 
-        #bounds = txt.get_window_extent(fig.canvas.get_renderer()).get_points()
-        #print("txt bounds: {}".format(bounds))
         if return_flag:
             plt.savefig(fileout)
             return
@@ -1081,7 +1377,10 @@ def write_histograms(shape, stderr,
         ptiles.append(percentile(bg_rate, 90.0))
     if dc_rate is not None and len(dc_rate)>10:
         ptiles.append(percentile(dc_rate, 90.0))
-    max90percentile = max(ptiles)
+    if len(ptiles) == 0:
+        max90percentile = 0
+    else:
+        max90percentile = max(ptiles)
 
     # adjust rate axis for higher mutation rates (e.g. from DMS or other highly mutagenic reagents)
     bin_max = 0.03
@@ -1092,10 +1391,7 @@ def write_histograms(shape, stderr,
 
     ax1.set_ylabel("Normalized\nnucleotide count",fontsize=13)
     ax1.set_xlabel("Mutation rate (%)", fontsize=13)
-    #title = ax1.set_title("Mutation rates",fontsize=15)
     ax1.set_title('Mutation rates', x=0.5,y=1.08)
-    #y = title.get_y()
-    #title.set_y(y
 
     ax1.get_xaxis().tick_bottom()   # remove unneeded ticks
     ax1.get_yaxis().tick_left()
@@ -1109,7 +1405,6 @@ def write_histograms(shape, stderr,
     ax1.tick_params(axis='both', labelsize=tlabel_size)
 
     # TODO: simplify these repeated calls
-
     if "Modified" in legend_labels and len(rx_rate)>10:
         rxpdf, bins, rx_rate_patches = ax1.hist(rx_rate[np.isfinite(rx_rate)], float_bins, histtype='step', lw=1.5,color=rx_color,zorder=4)
         max_rx_rate_y = max([x[1] for x in rx_rate_patches[0].get_xy()])
@@ -1201,11 +1496,6 @@ def write_histograms(shape, stderr,
 
     ymax = 1.0
 
-    #leg = ax2.legend(["Modified","Untreated","Denatured"], framealpha=0.75, fontsize=11)
-    #for l in leg.get_lines():
-    #    l.set_linewidth(1.5)
-    #    l.set_alpha(1.0)
-
     ax2.set_xlim([0.0,xmax])
     ax2.set_ylim([0.0,ymax])
 
@@ -1241,8 +1531,6 @@ def write_histograms(shape, stderr,
     ax3.set_xlabel("Normalized reactivity", fontsize=13)
     ax3.set_ylabel("Normalized\nnucleotide count", fontsize=13)
     ax3.set_title("Reactivity distribution", x=0.5,y=1.08)
-    #xticks = [x/10.0 for x in range(-5, 30, 5)] + [0.4, 0.85]
-    #xticks = [-1.0, -0.5, 0.0, 0.4, 0.85, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0]
     xticks = [-1, -0.5, 0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4]
     xlabels = ["%d"%val if val==int(val) else "%s"%val for val in xticks]
 
@@ -1265,13 +1553,8 @@ def write_histograms(shape, stderr,
         leg = ax3.legend(["Reactivities","Stderrs"], framealpha=0.75, fontsize=11)
 
         ax3.axvline(x=0,ls='-',lw=1,color="0.5",zorder=0)
-        #ax3.axvline(x=0.4,ls='-',lw=1,color="0.5",zorder=0)
-        #ax3.axvline(x=0.85,ls='-',lw=1,color="0.5",zorder=0)
 
-    #ymin, ymax = ax3.get_ylim()
-    #ymax = max(shapePdf)
     ymax = 1
-    #ax3.set_xlim([-0.5,3])
     ax3.set_ylim([0,ymax])
 
     ax3.get_xaxis().tick_bottom()   # remove unneeded ticks
@@ -1291,7 +1574,9 @@ def write_histograms_dms(dms, stderr,
                          seq,
                          rx_rate, bg_rate, dc_rate,
                          rx_depth, bg_depth, dc_depth,
-                         fileout, name, qc_pass):
+                         fileout, name, qc_pass, N7file=None, dms_N7 = None,
+                         rx_rate_N7=None, bg_rate_N7=None, dc_rate_N7=None,
+                         rx_depth_N7=None, bg_depth_N7=None, dc_depth_N7=None):
     
     
     seq = np.array(list(seq))
@@ -1306,14 +1591,25 @@ def write_histograms_dms(dms, stderr,
     if dc_rate is not None:
         legend_labels.append("Denatured")
     
-    if rx_rate is not None and bg_rate is not None:
-        mkdiffplot=True
-        fig, axes = plt.subplots(nrows=4, ncols=4)
-        fig.set_size_inches(10,10)
+    if N7file:
+        if rx_rate is not None and bg_rate is not None:
+            mkdiffplot=True
+            fig, axes = plt.subplots(nrows=5, ncols=4)
+            fig.set_size_inches(10,12.5)
+        else:
+            mkdiffplot=False
+            fig, axes = plt.subplots(nrows=5, ncols=3)
+            fig.set_size_inches(7.5,12.5)
+
     else:
-        mkdiffplot=False
-        fig, axes = plt.subplots(nrows=4, ncols=3)
-        fig.set_size_inches(7.5,10)
+        if rx_rate is not None and bg_rate is not None:
+            mkdiffplot=True
+            fig, axes = plt.subplots(nrows=4, ncols=4)
+            fig.set_size_inches(10,10)
+        else:
+            mkdiffplot=False
+            fig, axes = plt.subplots(nrows=4, ncols=3)
+            fig.set_size_inches(7.5,10)
 
 
     fig.subplots_adjust(bottom=0.1, top=0.85, wspace=0.25, hspace=0.45, left=0.08, right=0.95)
@@ -1341,7 +1637,7 @@ def write_histograms_dms(dms, stderr,
             return
 
 
-    def _plothist_(ax, mask, rx, bg, dc, nbins):
+    def _plothist_(ax, mask, rx, bg, dc, nbins, GN7 = False):
 
         minval, maxval = 1, 0
         
@@ -1359,30 +1655,67 @@ def write_histograms_dms(dms, stderr,
             
         bins = np.linspace(minval,maxval,nbins)
         inc = 0
-        if rx is not None:
-            ax.hist(rx[mask], bins=bins, histtype='step',lw=1.5,color=rx_color, zorder=4)
-            if max(rx[mask]) > maxval:
-                plt.text(1.0, 0.3, 'max={:.3f} not shown'.format(max(rx[mask])), transform=ax.transAxes, fontsize=6, color=rx_color, ha='right', style='italic')
-                inc+=0.1
-        if bg is not None and sum(bg>0) > 0:
-            ax.hist(bg[mask], bins=bins, histtype='step',lw=1.5,color=bg_color, zorder=3)
-            if max(bg[mask]) > maxval:
-                plt.text(1.0, 0.3-inc, 'max={:.3f} not shown'.format(max(bg[mask])), transform=ax.transAxes, fontsize=6, color=bg_color, ha='right', style='italic')
-                inc+=0.1
-        if dc is not None and sum(dc>0) > 0:
-            ax.hist(dc[mask], bins=bins, histtype='step',lw=1.5,color=dc_color, zorder=2)
-            if max(dc[mask]) > maxval:
-                plt.text(1.0, 0.3-inc, 'max={:.3f} not shown'.format(max(dc[mask])), transform=ax.transAxes, fontsize=6, color=dc_color, ha='right', style='italic')
 
 
-    for ntindex, nt in enumerate(['A','C','U','G']):
-        
-        mask = (seq == nt)
+
+        if GN7:
+            if rx is not None:
+                ax.hist(rx[mask], bins=bins, histtype='step',lw=1.5,color="purple", zorder=4)
+                if max(rx[mask]) > maxval:
+                    plt.text(1.0, 0.3, 'max={:.3f} not shown'.format(max(rx[mask])), transform=ax.transAxes, fontsize=6, color="purple", ha='right', style='italic')
+                    inc+=0.1
+            if bg is not None and sum(bg>0) > 0:
+                ax.hist(bg[mask], bins=bins, histtype='step',lw=1.5,color="pink", zorder=3)
+                if max(bg[mask]) > maxval:
+                    plt.text(1.0, 0.3-inc, 'max={:.3f} not shown'.format(max(bg[mask])), transform=ax.transAxes, fontsize=6, color="pink", ha='right', style='italic')
+                    inc+=0.1
+            if dc is not None and sum(dc>0) > 0:
+                ax.hist(dc[mask], bins=bins, histtype='step',lw=1.5,color=dc_color, zorder=2)
+                if max(dc[mask]) > maxval:
+                    plt.text(1.0, 0.3-inc, 'max={:.3f} not shown'.format(max(dc[mask])), transform=ax.transAxes, fontsize=6, color=dc_color, ha='right', style='italic')
+
+        else:
+            if rx is not None:
+                ax.hist(rx[mask], bins=bins, histtype='step',lw=1.5,color=rx_color, zorder=4)
+                if max(rx[mask]) > maxval:
+                    plt.text(1.0, 0.3, 'max={:.3f} not shown'.format(max(rx[mask])), transform=ax.transAxes, fontsize=6, color=rx_color, ha='right', style='italic')
+                    inc+=0.1
+            if bg is not None and sum(bg>0) > 0:
+                ax.hist(bg[mask], bins=bins, histtype='step',lw=1.5,color=bg_color, zorder=3)
+                if max(bg[mask]) > maxval:
+                    plt.text(1.0, 0.3-inc, 'max={:.3f} not shown'.format(max(bg[mask])), transform=ax.transAxes, fontsize=6, color=bg_color, ha='right', style='italic')
+                    inc+=0.1
+            if dc is not None and sum(dc>0) > 0:
+                ax.hist(dc[mask], bins=bins, histtype='step',lw=1.5,color=dc_color, zorder=2)
+                if max(dc[mask]) > maxval:
+                    plt.text(1.0, 0.3-inc, 'max={:.3f} not shown'.format(max(dc[mask])), transform=ax.transAxes, fontsize=6, color=dc_color, ha='right', style='italic')
+
+
+    if N7file:
+        NT_iterable = ['A','C','U','G','GN7']
+    else:
+        NT_iterable = ['A','C','U','G']
+
+    for ntindex, nt in enumerate(NT_iterable):
+
+
+        # In the future this logic should be incorporated in a more integrated way
+        # as this is a bit hacky
+        if nt == "GN7":
+            rx_rate = rx_rate_N7
+            bg_rate = bg_rate_N7
+            dc_rate = dc_rate_N7
+            dms = dms_N7
+
+        if nt == "GN7":
+            mask = (seq == 'G')
+        else: 
+            mask = (seq == nt)
+
         for rate in (rx_rate, bg_rate, dc_rate):
             if rate is not None:
                 mask = mask & np.isfinite(rate)
-
-
+        
         if mkdiffplot:
             ax1, ax2, ax3, ax4 = axes[ntindex,:]
         else:
@@ -1402,12 +1735,18 @@ def write_histograms_dms(dms, stderr,
 
         ax1.tick_params(axis='both', labelsize=tlabel_size)
 
-        _plothist_(ax1, mask, rx_rate, bg_rate, dc_rate, 20)
-        
+        if sum(mask) == 0: # No NT rates to interact with / plot.
+                           # Skip to avoid error
+            continue
+
+        if nt == "GN7":
+            _plothist_(ax1, mask, rx_rate, bg_rate, dc_rate, 20, True)
+        else:
+            _plothist_(ax1, mask, rx_rate, bg_rate, dc_rate, 20)
 
         ax1.set_xticklabels(['{:.3g}'.format(x) for x in ax1.get_xticks()], rotation = 90)
         
-        if nt=='A':
+        if nt=='A' or nt=='GN7':
             leg = ax1.legend(legend_labels, framealpha=0.75, fontsize=8, markerscale=0.5)
             for l in leg.get_lines():
                 l.set_linewidth(1.5)
@@ -1417,6 +1756,14 @@ def write_histograms_dms(dms, stderr,
         if mkdiffplot:
             diff = rx_rate-bg_rate
             p95 = 1.2*np.percentile(diff[mask], 95)
+            if p95 < 0:
+                # In cases where all rates are negative, ie high background, low number NTs, or both
+                # p95 will be transformed to be 20% smaller than the 95th percentile.
+                # So instead we need to make it 20% larger. IE move it 20% in the positive direction
+                # instead of negative to avoid error due to the range having a max smaller than the min.
+                p95 = .8*np.percentile(diff[mask], 95)
+                
+
             ax2.hist(diff[mask], bins=20, range=(min(diff[mask]),p95), histtype='step', lw=1.5, color='black')
             ax2.spines["right"].set_visible(False)
             ax2.spines["top"].set_visible(False)
@@ -1430,7 +1777,10 @@ def write_histograms_dms(dms, stderr,
                 plt.text(1.0, 0.3, 'max={:.3f} not shown'.format(max(diff[mask])), transform=ax2.transAxes, fontsize=6, color='k', ha='right', style='italic')
 
 
-        xticks = np.linspace(-0.4,1.6,11)
+        if nt == "GN7":
+            xticks = np.linspace(0.0,3.3,11)
+        else:
+            xticks = np.linspace(-0.4,1.6,11)
         xlabels = ["{:.0f}".format(val) if val==int(val) else "{:.1f}".format(val) for val in xticks]
         
         ax3.tick_params(axis='both', labelsize=tlabel_size)
@@ -1440,18 +1790,58 @@ def write_histograms_dms(dms, stderr,
         if dms is not None:
             finmask = mask & np.isfinite(dms)
             if sum(finmask) > 0:
-                d = ax3.hist(dms[finmask], bins=20, range=(-0.4,1.6), histtype='step', lw=1.5, color="black", zorder=4)
-                
-                # plot the normalization factor
-                idx = np.argmax(dms[finmask])
-                if mkdiffplot:
-                    nfac = diff[finmask][idx]/dms[finmask][idx]
-                    ax2.axvline(x=nfac, ls='--', lw=1.5, color='0.5')
-                    plt.text(1.0,1.0, 'NormFac={:.3g}'.format(nfac), transform=ax2.transAxes, fontsize=8, color='0.5', ha='right')
-                else:
-                    nfac = rx_rate[finmask][idx]/dms[finmask][idx]
-                    ax1.axvline(x=nfac, ls='--', lw=1.5, color='0.5')
-                    plt.text(1.0,1.0, 'NormFac={:.3g}'.format(nfac), transform=ax1.transAxes, fontsize=8, color='0.5', ha='right')
+
+                if nt == "GN7":
+                    
+                    
+                    d = ax3.hist(dms[finmask], bins=20, range=(0, 3.3), histtype='step', lw=1.5, color="black", zorder=4)
+
+                    #proceeds_purine_mask = [nt for indx, nt_elem in enumerate(seq)]
+                    # If num purine or pyrimidine too low NFAC is pooled
+                    g_pur = ( [seq[nt_index + 1] in ["A", "G"] for nt_index, nt_value in enumerate(seq[:-1])] + [False] ) & finmask
+                    g_pyr = ( [seq[nt_index + 1] in ["C", "T", "U"] for nt_index, nt_value in enumerate(seq[:-1])] + [False] ) & finmask
+
+                    exp2_dms = np.exp2(dms) # Reverse log2 transformation so norm fac can be calculated
+                    if sum(g_pur) < 15 or sum(g_pyr) < 15:
+                        idx = np.argmax(exp2_dms[finmask])
+                        if mkdiffplot:
+                            nfac = diff[finmask][idx]*exp2_dms[finmask][idx]
+                            ax2.axvline(x=nfac, ls='--', lw=1.5, color='0.5')
+                            plt.text(1.0,1.0, 'NormFac={:.3g}'.format(nfac), transform=ax2.transAxes, fontsize=8, color='0.5', ha='right')
+                        else:
+                            nfac = rx_rate[finmask][idx]*exp2_dms[finmask][idx]
+                            ax1.axvline(x=nfac, ls='--', lw=1.5, color='0.5')
+                            plt.text(1.0,1.0, 'NormFac={:.3g}'.format(nfac), transform=ax1.transAxes, fontsize=8, color='0.5', ha='right')
+                    # Else, seperate NFAC for G_PUR and G_PYR
+                    else:
+                        g_pur_idx = np.argmax(exp2_dms[g_pur])
+                        g_pyr_idx = np.argmax(exp2_dms[g_pyr])
+                        if mkdiffplot:
+                            g_pur_nfac = exp2_dms[g_pur][g_pur_idx] * diff[g_pur][g_pur_idx]
+                            g_pyr_nfac = exp2_dms[g_pyr][g_pyr_idx] * diff[g_pyr][g_pyr_idx]
+                            ax2.axvline(x = g_pur_nfac, ls='--', lw=1.5, color='0.5')
+                            ax2.axvline(x = g_pyr_nfac, ls='--', lw=1.5, color='0.5')
+                            plt.text(1.0,1.0, 'GPUR={:.3g}, GPYR={:.3g}'.format(g_pur_nfac, g_pyr_nfac), transform=ax2.transAxes, fontsize=8, color='0.5', ha='right')
+
+                        else:
+                            g_pur_nfac = exp2_dms[g_pur][g_pur_idx] * rx_rate[g_pur][g_pur_idx]
+                            g_pyr_nfac = exp2_dms[g_pyr][g_pyr_idx] * rx_rate[g_pyr][g_pyr_idx]
+                            ax1.axvline(x = g_pur_nfac, ls='--', lw=1.5, color='0.5')
+                            ax1.axvline(x = g_pyr_nfac, ls='--', lw=1.5, color='0.5')
+                            plt.text(1.0,1.0, 'GPUR={:.3g}, GPYR={:.3g}'.format(g_pur_nfac, g_pyr_nfac), transform=ax1.transAxes, fontsize=8, color='0.5', ha='right')
+
+                else: 
+                    d = ax3.hist(dms[finmask], bins=20, range=(-0.4,1.6), histtype='step', lw=1.5, color="black", zorder=4)
+                    #plot normalization factor
+                    idx = np.argmax(dms[finmask])
+                    if mkdiffplot:
+                        nfac = diff[finmask][idx]/dms[finmask][idx]
+                        ax2.axvline(x=nfac, ls='--', lw=1.5, color='0.5')
+                        plt.text(1.0,1.0, 'NormFac={:.3g}'.format(nfac), transform=ax2.transAxes, fontsize=8, color='0.5', ha='right')
+                    else:
+                        nfac = rx_rate[finmask][idx]/dms[finmask][idx]
+                        ax1.axvline(x=nfac, ls='--', lw=1.5, color='0.5')
+                        plt.text(1.0,1.0, 'NormFac={:.3g}'.format(nfac), transform=ax1.transAxes, fontsize=8, color='0.5', ha='right')
 
 
         ax3.get_xaxis().tick_bottom()   # remove unneeded ticks
@@ -1464,7 +1854,10 @@ def write_histograms_dms(dms, stderr,
             line.set_markeredgewidth(1)
 
 
-        _plothist_(ax4, mask, rx_depth, bg_depth, dc_depth, 20)
+        if nt == "GN7":
+            _plothist_(ax4, mask, rx_depth, bg_depth, dc_depth, 20, True)
+        else:
+            _plothist_(ax4, mask, rx_depth, bg_depth, dc_depth, 20)
 
         ax4.get_xaxis().tick_bottom()   # remove unneeded ticks
         ax4.get_yaxis().tick_left()
@@ -1494,12 +1887,12 @@ def write_histograms_dms(dms, stderr,
             if mkdiffplot:
                 ax2.set_title("Background corrected\nrate distribution", x=0.5, y=1.08)
 
-        if ntindex==3:
+        if (ntindex==3 and not N7file) or (ntindex==4 and N7file) :
             ax1.set_xlabel("Mutation rate", fontsize=11)
             ax3.set_xlabel("Normalized reactivity", fontsize=11)
             ax4.set_xlabel("Effective read depth", fontsize=11)
             if mkdiffplot:
-                ax2.set_xlabel("Moodified - Untreated Rate", fontsize=11)
+                ax2.set_xlabel("Modified - Untreated Rate", fontsize=11)
 
 
     plt.savefig(fileout)
@@ -1573,18 +1966,13 @@ def load_tab(filename):
             pass
 
     data = {headers[j]:np.empty(length,dtype=remapped_types[j]) for j in range(len(headers))}
-    #sys.stderr.write("data['Modified_occluded_depth']: {}\n".format(data["Modified_occluded_depth"]))
 
     for i in range(length):
         line = f.readline()
         s = line.strip().split('\t')
         for j in range(len(headers)):
             try:
-                #sys.stderr.write("Attempting to remap data array for header {}\n".format(headers[j]))
-                #sys.stderr.write("remapped_types[j]: {}\n".format(remapped_types[j]))
                 data[headers[j]][i] = eval(remapped_types[j])(s[j])
-            #except ValueError:
-            #    data[headers[j]][i] = -999 # internally means "no data"
             except IndexError:
                 s = "File \""+filename+"\" is misformatted "
                 s += "(contains fewer columns than headers)."
@@ -1601,6 +1989,10 @@ if __name__=="__main__":
     h = "Tab-delimited file summarizing reactivity"
     h += " profile, mutation rates, and sequencing depth."
     parser.add_argument("--infile", help=h, required=True, type=str)
+
+    h = "Tab-delimited file summarizing N7 reactivity"
+    h += " profile, mutation rates, and sequencing depth. "
+    parser.add_argument("--N7file", help=h, required=False, type=str)
 
     h = "PDF file to render reactivity profile, mutation rates, and depths."
     h += " This will only be rendered if the sequence is less than maxlen nucleotides long."
@@ -1650,12 +2042,13 @@ if __name__=="__main__":
     
     p = parser.parse_args(sys.argv[1:])
 
-
     primers = []
     if p.primers is not None and p.primers != "":
         primers = load_primers(p.primers)
 
     d = load_tab(p.infile)
+    if(p.N7file != None):
+       dn = load_tab(p.N7file)
 
     # create output directories if needed
     if p.plot is not None:
@@ -1670,31 +2063,57 @@ if __name__=="__main__":
     if "Norm_profile" in d:
         profile = d["Norm_profile"]
         stderr = d["Norm_stderr"]
+        if(p.N7file != None):
+           profileN = dn["Norm_profile"]
+           stderrN = dn["Norm_stderr"] 
     else:
         profile = None
         stderr = None
+        if(p.N7file != None):
+           profileN = None
+           stderrN = None 
 
     if p.title is not None:
         title = p.title
+        if(p.N7file != None):
+           titleN = p.title
+        
     else:
         title = ""
+        if(p.N7file != None):
+           titleN = ""
 
     # mask out amplicon primer pair site sequences before running QC checks
     masked_sequence = d["Sequence"].copy()
+    if(p.N7file != None):
+       masked_sequenceN = dn["Sequence"].copy()
+
     masked = np.zeros(masked_sequence.size, dtype=bool)
+    if(p.N7file != None):
+        maskedN = np.zeros(masked_sequenceN.size, dtype=bool)
+
     for pair in primers:
         for primer in [pair.fw, pair.rv]:
             for i in range(primer.left-1, primer.right):
                 try:
                     masked[i] = True
+                    if(p.N7file != None):
+                       masked[i] = True
                 except IndexError:
                     pass
     for i in range(len(masked)):
         if masked[i]:
             masked_sequence[i] = masked_sequence[i].lower()
+            if(p.N7file != None):
+               masked_sequenceN[i] = masked_sequenceN[i].lower()
     
     
     if p.dms:
+        if "Norm_profile" in d:
+            norm_p = d["Norm_profile"]
+        else:
+            norm_p = None
+
         qc_pass = qc_stats_dms(masked_sequence,
                                d["Modified_rate"],
                                d["Untreated_rate"],
@@ -1702,12 +2121,13 @@ if __name__=="__main__":
                                d["Modified_effective_depth"],
                                d["Untreated_effective_depth"],
                                d["Denatured_effective_depth"],
+                               norm_p,
                                p.mindepth, p.maxbg,
                                p.min_depth_pass,
                                p.max_high_bg,
                                p.min_positive,
                                p.min_high_mut)
-
+    #TODO: move N7 QC here.
 
     else:
         qc_pass = qc_stats(masked_sequence,
@@ -1724,34 +2144,74 @@ if __name__=="__main__":
                            p.high_mut_thresh,
                            p.min_high_mut)
 
+
     if p.plot is not None and (d["Modified_rate"] is None or 
                                len(d["Modified_rate"]) <= p.maxlen):
-        render_profiles(
-            d["Nucleotide"], d["Sequence"], profile, stderr,
-            d["Modified_rate"], d["Untreated_rate"], d["Denatured_rate"],
-            d["Modified_effective_depth"], d["Untreated_effective_depth"], d["Denatured_effective_depth"],
-            d["Modified_read_depth"], d["Untreated_read_depth"], d["Denatured_read_depth"],
-            p.plot, title, qc_pass, dms=p.dms)
+         
+        if(p.N7file == None):
+            render_profiles(
+               d["Nucleotide"], d["Sequence"], profile, stderr,
+               d["Modified_rate"], d["Untreated_rate"], d["Denatured_rate"],
+               d["Modified_effective_depth"], d["Untreated_effective_depth"], d["Denatured_effective_depth"],
+               d["Modified_read_depth"], d["Untreated_read_depth"], d["Denatured_read_depth"],
+               p.plot, title, qc_pass, dms=p.dms)
 
-    if p.hist is not None and not p.dms:
-        write_histograms(
-            profile, stderr,
-            p.mindepth, p.maxbg,
-            masked_sequence,
-            d["Modified_rate"], d["Untreated_rate"], d["Denatured_rate"],
-            d["Modified_effective_depth"], d["Untreated_effective_depth"], d["Denatured_effective_depth"],
-            p.hist, title, qc_pass)
+        else:
+            #Logic to scrape / N7 quality control message produced in norm profile
+            n7_split = p.N7file.split("/")
+            prefix = "/".join(n7_split[0:-1])
+            suffix = n7_split[-1]
+            n7_message_file = prefix + "/." + suffix + "_n7message.txt"
 
-    elif p.hist is not None and p.dms:
-        write_histograms_dms(
-            profile, stderr,
-            p.mindepth, p.maxbg,
-            masked_sequence,
-            d["Modified_rate"], d["Untreated_rate"], d["Denatured_rate"],
-            d["Modified_effective_depth"], d["Untreated_effective_depth"], d["Denatured_effective_depth"],
-            p.hist, title, qc_pass)
+            try:
+               n7_inp_file = open(n7_message_file, "r")
+               lines = [line for line in n7_inp_file]
+               n7_inp_file.close()
+               message = lines[0]
 
-
+            except:
+               message = None
 
 
+            render_profiles(
+               d["Nucleotide"], d["Sequence"], profile, stderr,
+               d["Modified_rate"], d["Untreated_rate"], d["Denatured_rate"],
+               d["Modified_effective_depth"], d["Untreated_effective_depth"], d["Denatured_effective_depth"],
+               d["Modified_read_depth"], d["Untreated_read_depth"], d["Denatured_read_depth"],
+               p.plot, title, qc_pass, 
+               dn["Nucleotide"], dn["Sequence"], profileN, stderrN,
+               dn["Modified_rate"], dn["Untreated_rate"], dn["Denatured_rate"],
+               dn["Modified_effective_depth"], dn["Untreated_effective_depth"], dn["Denatured_effective_depth"],
+               dn["Modified_read_depth"], dn["Untreated_read_depth"], dn["Denatured_read_depth"],
+               dms=p.dms, N7=p.N7file, message=message 
+               )
 
+
+
+    if p.hist is not None:
+        if p.N7file:
+            write_histograms_dms(
+                profile, stderr,
+                p.mindepth, p.maxbg,
+                masked_sequence,
+                d["Modified_rate"], d["Untreated_rate"], d["Denatured_rate"],
+                d["Modified_effective_depth"], d["Untreated_effective_depth"], d["Denatured_effective_depth"],
+                p.hist, title, qc_pass, p.N7file,
+                profileN, dn["Modified_rate"], dn["Untreated_rate"], dn["Denatured_rate"],
+                dn["Modified_effective_depth"], dn["Untreated_effective_depth"], dn["Denatured_effective_depth"])
+        elif p.dms:
+            write_histograms_dms(
+                profile, stderr,
+                p.mindepth, p.maxbg,
+                masked_sequence,
+                d["Modified_rate"], d["Untreated_rate"], d["Denatured_rate"],
+                d["Modified_effective_depth"], d["Untreated_effective_depth"], d["Denatured_effective_depth"],
+                p.hist, title, qc_pass)
+        else:
+            write_histograms(
+                profile, stderr,
+                p.mindepth, p.maxbg,
+                masked_sequence,
+                d["Modified_rate"], d["Untreated_rate"], d["Denatured_rate"],
+                d["Modified_effective_depth"], d["Untreated_effective_depth"], d["Denatured_effective_depth"],
+                p.hist, title, qc_pass)

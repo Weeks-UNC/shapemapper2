@@ -134,7 +134,7 @@ public:
     Read& setCount_GA(const std::vector<bool> &count_);
     Read& setId(const std::string &id_);
     Read& trimRightEnd(const int exclude_3prime);
-    Read& stripPrimers(const PrimerPair& primer_pair);
+    Read& stripPrimers(const PrimerPair& primer_pair, bool isdms);
     Read& shiftAmbigIndels(const bool right_align_ambig_dels,
                            const bool right_align_ambig_ins);
     Read& collapseMutations(const int max_internal_match);

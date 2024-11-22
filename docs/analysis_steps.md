@@ -26,6 +26,11 @@ Steps are listed in order of execution, with the exception of
 reference sequence correction, which is a larger preprocessing
 stage that includes many of the other listed stages.
 
+Note, analysis steps will vary if --N7 or --dms options are used.
+See [N7-G](docs/N7-G.md) and [DMSmode](docs/dmsmode.md) for further details.
+
+
+
 ---
 &nbsp;&nbsp;&nbsp;&nbsp;
 
