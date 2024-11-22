@@ -1019,7 +1019,7 @@ def render_profiles(num, seq, reactivity, stderr,
               qc_pass_n7="empty"
            # Else, change small reactivities to allow for visualization
            else:
-               print("reactivityN: ", reactivityN)
+               #print("reactivityN: ", reactivityN)
                reactivityN[reactivityN < 0] = .2 
 
            for i in range(len(reactivityN)):
