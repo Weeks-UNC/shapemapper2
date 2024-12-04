@@ -425,6 +425,6 @@ David Mitchell, III et al, Mutation signature filtering enables high-fidelity RN
 
 #### For msDMS_MaP (N7-G) analyses, please cite:
 
-Irfana Saleem, Thomas Miller, Lucas Kearns, David Mitchell, Ritwika Bose, Chase Weidman, Anthony Mustoe. Title to be determined. Journal to be determined. 202X.
+Irfana Saleem, Thomas Miller, Lucas Kearns, David Mitchell, Ritwika Bose, Chase Weidmann, Anthony Mustoe. Title to be determined. Journal to be determined. 202X.
 
 &nbsp;&nbsp;&nbsp;&nbsp;
