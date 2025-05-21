@@ -109,7 +109,7 @@ namespace read_trimmer {
         BI::filtering_istream in;
         // universal newline support filter
         in.push(BI::newline_filter(BI::newline::posix));
-        if (BF::extension(BF::path(filename)) == ".gz") {
+        if (BF::path(filename).extension() == ".gz") {
             // decompress gzip if file looks compressed
             in.push(BI::gzip_decompressor());
         }
@@ -128,7 +128,7 @@ namespace read_trimmer {
                     "ERROR: Could not open output file " + outname + "\nCheck file and folder permissions.");
         }
         BI::filtering_ostream out;
-        if (BF::extension(BF::path(outname)) == ".gz") {
+        if (BF::path(outname).extension() == ".gz") {
             // compress using gzip if requested
             out.push(BI::gzip_compressor());
         }
