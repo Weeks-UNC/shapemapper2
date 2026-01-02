@@ -131,8 +131,6 @@ def find_pernt_factor(sequence, profile, threshold, dms=False):
         x = profile[mask]
         tempflag = False
         
-        #Old threshold
-        #if x.shape[0] < 20:
         if x.shape[0] < threshold:
             s = "Error: sequence contains too few "+n+" nucleotides (={})".format(x.shape[0])
             s += " with quality reactivity information for"
@@ -144,65 +142,87 @@ def find_pernt_factor(sequence, profile, threshold, dms=False):
             raise NormError(s)
 
         elif dms == False:
-            bnds = np.percentile(x, [90., 95.])
-            pmask = (x >= bnds[0]) & (x<bnds[1])
-            normset = x[pmask]
-            
-            # compute norm standard way
-            n1 = np.mean(normset)
-            # Sometimes the 90th and 95th percentile are the same
-            # value due to the way the data is distributed.
-            # This avoids errors stemming from the resulting 
-            # NaN value.
-            if np.isnan(n1):
-                n1 = 0
-            
-            try:
-                # compute the norm only considereing reactive nts
-                n2 = np.percentile(x[x>0.001], 75)
-            except IndexError:
-                n2 = 0
+            if (threshold == 0) and (x.shape[0] == 0):
+                s = "\n\nSequence contains 0 "
+                s += n
+                s += " nucleotides with quality reactivity information. Since --pernt-norm-factor-threshold "
+                s += " has been set to 0 the normalization factor for this nucleotide is being "
+                s += " set to NaN. Consequently, all "
+                s += n
+                s += " nucleotides will be ignored.\n\n"
+                print(s)
+                norm_factor_dict[n] = np.nan
 
-            norm_factor_dict[n] = max(n1, n2)       
+            else:
+                bnds = np.percentile(x, [90., 95.])
+                pmask = (x >= bnds[0]) & (x<bnds[1])
+                normset = x[pmask]
+                
+                # compute norm standard way
+                n1 = np.mean(normset)
+                # Sometimes the 90th and 95th percentile are the same
+                # value due to the way the data is distributed.
+                # This avoids errors stemming from the resulting 
+                # NaN value.
+                if np.isnan(n1):
+                    n1 = 0
+                
+                try:
+                    # compute the norm only considereing reactive nts
+                    n2 = np.percentile(x[x>0.001], 75)
+                except IndexError:
+                    n2 = 0
+
+                norm_factor_dict[n] = max(n1, n2)       
 
         else: 
-           norm_factor_dict[n] = np.percentile(x, 75)
+           if (threshold == 0) and (x.shape[0] ==0):
+                if (n == 'G'):
+                    s = "\n\nSequence contains 0 "
+                    s += " N7_G "
+                    s += " nucleotides with quality reactivity information. Since --pernt-norm-factor-threshold "
+                    s += " has been set to 0 the normalization factor for this nucleotide is being "
+                    s += " set to NaN. Consequently, all "
+                    s += " N7_G "
+                    s += " nucleotides will be ignored.\n\n"
+                    print(s)
+                    norm_factor_dict['GPUR'], norm_factor_dict['GPYR'] = np.nan, np.nan
+                norm_factor_dict[n] = np.nan
 
-           
-
-           if n == 'G':
-                
-                g_pur = []
-                g_pyr = []
-                for v,i in enumerate(profile):
-                    
-                    if np.isfinite(i) and sequence[v] == 'G':
+           else:
+               norm_factor_dict[n] = np.percentile(x, 75)
+               if n == 'G':
+                    g_pur = []
+                    g_pyr = []
+                    for v,i in enumerate(profile):
                         
-                        if v + 1 < len(profile):
+                        if np.isfinite(i) and sequence[v] == 'G':
                             
-                            if sequence[v + 1] == 'G' or sequence[v + 1] == 'A' :
+                            if v + 1 < len(profile):
                                 
-                                g_pur.append(i)
-                            elif sequence[v + 1] == 'C' or sequence[v + 1] == 'U':
-                                
-                                g_pyr.append(i)
-                
+                                if sequence[v + 1] == 'G' or sequence[v + 1] == 'A' :
+                                    
+                                    g_pur.append(i)
+                                elif sequence[v + 1] == 'C' or sequence[v + 1] == 'U':
+                                    
+                                    g_pyr.append(i)
+                    
 
-                #Pooling functionality. If quantity of Gs is too low, necessary to pool them together
-                #for statistical power. 
-                if len(g_pyr) < 15 or len(g_pur) < 15:
-                  g_pyr = [x * .65 for x in g_pyr]
-                  g_pur = g_pyr + g_pur
-                  g_pyr = g_pur
-                  gpur_nfac = np.percentile(g_pur, 75)
-                  gpyr_nfac = np.percentile(g_pyr, 75) / .65
+                    #Pooling functionality. If quantity of Gs is too low, necessary to pool them together
+                    #for statistical power. 
+                    if len(g_pyr) < 15 or len(g_pur) < 15:
+                      g_pyr = [x * .65 for x in g_pyr]
+                      g_pur = g_pyr + g_pur
+                      g_pyr = g_pur
+                      gpur_nfac = np.percentile(g_pur, 75)
+                      gpyr_nfac = np.percentile(g_pyr, 75) / .65
 
-                else:
-                  gpur_nfac = np.percentile(g_pur, 75)
-                  gpyr_nfac = np.percentile(g_pyr, 75)
+                    else:
+                      gpur_nfac = np.percentile(g_pur, 75)
+                      gpyr_nfac = np.percentile(g_pyr, 75)
 
-                norm_factor_dict["GPUR"] = gpur_nfac
-                norm_factor_dict['GPYR'] = gpyr_nfac
+                    norm_factor_dict["GPUR"] = gpur_nfac
+                    norm_factor_dict['GPYR'] = gpyr_nfac
 
 
 
@@ -435,11 +455,27 @@ if __name__ == "__main__":
     h += " each be scaled using this factor and two additional"
     h += " columns will be added to these files, unless a list of"
     h += " output files is provided using --normout."
-    parser.add_argument("--tonorm", type=str, nargs="*", required=True, help=h)
+    parser.add_argument("--tonorm", type=str, nargs="*", help=h)
+
+    h = "File containing reactivity profile names separated by newline characters"
+    h += " (each line contains one reactivity profile path)."
+    h += " This is especially useful when mass normalizing"
+    h += " a large amount of profiles (eg. transcriptome dataset)"
+    h += " since there is a limit to the amount of arguments"
+    h += " that may be submitted in a single command."
+    parser.add_argument("--tonorm_file", type=str, help=h)
 
     h = "List of files to output. If this argument is specified,"
     h += " files given with --tonorm will not be overwritten."
     parser.add_argument("--normout", type=str, nargs="*", help=h)
+
+    h = "File containing reactivity profile names separated by newline characters"
+    h += " (each line contains one reactivity profile path)."
+    h += " This is especially useful when mass normalizing"
+    h += " a large amount of profiles (eg. transcriptome dataset)"
+    h += " since there is a limit to the amount of arguments"
+    h += " that may be submitted in a single command."
+    parser.add_argument("--normout_file", type=str, help=h)
 
     h = "List of additional tab-delimited file(s) to be scaled by the"
     h += "calculated normalization factor."
@@ -481,6 +517,23 @@ if __name__ == "__main__":
             msg += "match the number of input files given with --toscale."
             raise RuntimeError(msg)
 
+    if p.tonorm is None and p.tonorm_file is None:
+        msg = "Error, either tonorm or tonorm_file is required."
+        raise ValueError(msg)
+
+    if p.tonorm_file:
+        fnames = []
+        with open(p.tonorm_file) as o_file:
+            for fname in o_file:
+                fnames.append(fname.strip())
+        p.tonorm = fnames
+
+    if p.normout_file:
+        fnames = []
+        with open(p.normout_file) as o_file:
+            for fname in o_file:
+                fnames.append(fname.strip())
+        p.normout = fnames
 
     if p.toscale is None:
         p.toscale = []
