@@ -287,8 +287,8 @@ def normalize_profile(sequence, profile, stderrs, norm_factor,keepnan=False, dms
                #Fixes issue of negative values in normalized columns 
                if i + 1 < len(profile):
                    if profile[i] < 0 and keepnan:
-                       norm_profile[i] = 3.32
-                       norm_stderrs[i] = 3.32
+                       norm_profile[i] = 2**3.32
+                       norm_stderrs[i] = 2**3.32
                        
                    elif sequence[i + 1] == 'A' or sequence[i + 1] == 'G':
                    
