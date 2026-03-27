@@ -40,15 +40,15 @@ Installation
 ------------
 ShapeMapper will only run on 64-bit Linux systems (Mac and Windows are not currently supported).
 
-- Download latest [release](https://github.com/Weeks-UNC/shapemapper2/releases/download/v2.3/shapemapper2-2.3.tar.gz)
-    - On most systems, typing `wget https://github.com/Weeks-UNC/shapemapper2/releases/download/v2.3/shapemapper2-2.3.tar.gz`
+- Download latest [release](https://github.com/Weeks-UNC/shapemapper2/releases/download/v2.3.1/shapemapper2-2.3.1.tar.gz)
+    - On most systems, typing `wget https://github.com/Weeks-UNC/shapemapper2/releases/download/v2.3.1/shapemapper2-2.3.1.tar.gz`
       will download the file on the commandline.
-    - Be sure to download from the `shapemapper2-2.3.tar.gz` link, _not_ the source code-only links, which
+    - Be sure to download from the `shapemapper2-2.3.1.tar.gz` link, _not_ the source code-only links, which
       do not include executables.
 
 - Extract release tarball using
     
-    `tar -xvf shapemapper2-2.3.tar.gz`
+    `tar -xvf shapemapper2-2.3.1.tar.gz`
 
 - Add shapemapper executable to PATH (optional - google this if you don't know how)
 
