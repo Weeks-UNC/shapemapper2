@@ -20,7 +20,7 @@ def split_sam(sam=None,
               outs=None):
     if len(outs) != len(names):
         raise RuntimeError("Error: number of output files must match number of sequence target names.")
-    f = open(sam, "rU")
+    f = open(sam, "r")
     o = [open(x, "w") for x in outs]
     for line in f:
         # copy any headers/comment lines to all outputs

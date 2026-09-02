@@ -497,7 +497,7 @@ def qc_stats_dms(seq,
                     print("PASS: The expected number of nucleotides (or more) are highly reactive\n")
                 else:
                     overall_pass[nt] = False
-                    print("FAIL: modified and untreated samples might be swapped\n")
+                    print("FAIL: {:.1f}% of nts are more reactive in the untreated sample; modified and untreated samples might be swapped\n".format(inv_high_mut_frac*100))
             else:
                 overall_pass[nt] = False
                 print("FAIL:  Lower than expected reactivity\n")

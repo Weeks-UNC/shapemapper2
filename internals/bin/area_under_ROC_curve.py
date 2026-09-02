@@ -6,7 +6,7 @@ import numpy as np
 from sklearn.metrics import roc_curve, auc
 
 def load_ct(filename):
-    f = open(filename, "rU")
+    f = open(filename, "r")
     f.readline()
     paired = []
     for line in f:
@@ -21,7 +21,7 @@ def load_ct(filename):
 
 
 def load_map(filename):
-    f = open(filename, "rU")
+    f = open(filename, "r")
     profile = []
     for line in f:
         s = line.strip().split()

@@ -11,7 +11,7 @@ ap.add_argument('--output', type=str)
 # FIXME: rewrite in c++
 
 def iterate_fastq(filename):
-    f = open(filename, "rU")
+    f = open(filename, "r")
     lines = []
     for line in f:
         # suppress jdb socket message

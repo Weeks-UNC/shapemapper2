@@ -40,7 +40,7 @@ len_err = RuntimeError(len_msg)
 # TODO: move load_fasta(), load_depth() to their own file utility module, since
 # they are used by both make_reactivity_profiles.py and make_variant.py
 def load_fasta(fastaname, rna, convert_to_rna=True):
-    f = open(fastaname, "rU")
+    f = open(fastaname, "r")
     seq = ""
     rna_count = 0
     in_selected_rna = False
@@ -205,7 +205,7 @@ def load_variants(variant_filepath,
     assert isinstance(warningfreq, float)
 
     # load depths in first pass
-    f = open(variant_filepath, "rU")
+    f = open(variant_filepath, "r")
     depths = []
     for line in f:
         try:

@@ -16,7 +16,7 @@ ap.add_argument('--R2-out', type=str)
 # FIXME: combine with deinterleave_fastq_columns.py as a more general utility
 
 def iterate_fastq(filename):
-    f = open(filename, "rU")
+    f = open(filename, "r")
     lines = []
     for line in f:
         # suppress jdb socket message

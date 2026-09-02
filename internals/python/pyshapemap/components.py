@@ -625,7 +625,7 @@ class StarAligner(Component):
         return cmd
 
     def after_run_message(self):
-        return open(os.path.join(self.logs.output_nodes[0].foldername, "Log.final.out"), "rU").read()
+        return open(os.path.join(self.logs.output_nodes[0].foldername, "Log.final.out"), "r").read()
 
 
 class StarAlignerMixedInput(Component):

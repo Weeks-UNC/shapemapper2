@@ -324,7 +324,7 @@ class Component():
             # FIXME: all these isinstances are hacky, should use a unified interface to access file/folder path, move logic to subclass defs
             if isinstance(node, ParameterNode):
                 # load parameter value from intermediate file
-                values[node.get_name()] = open(node.input_node.filename,"rU").read().strip()
+                values[node.get_name()] = open(node.input_node.filename,"r").read().strip()
             else:
                 if isinstance(node.input_node, FileNode):
                     values[node.get_name()] = '"'+node.input_node.filename+'"'
@@ -483,14 +483,14 @@ class Component():
 
     def read_stdout(self):
         try:
-            f = open(self.stdout.output_nodes[0].filename, 'rU')
+            f = open(self.stdout.output_nodes[0].filename, 'r')
             return f.read()
         except AttributeError:
             return ""
 
     def read_stderr(self):
         try:
-            f = open(self.stderr.output_nodes[0].filename, 'rU')
+            f = open(self.stderr.output_nodes[0].filename, 'r')
             return f.read()
         except AttributeError:
             return ""

@@ -58,7 +58,7 @@ def locate_primer_pairs(fastas,
     current_RNA = "__ALL_TARGETS__"
     if primer_filenames is not None:
         for filename in primer_filenames:
-            for line in open(filename, "rU"):
+            for line in open(filename, "r"):
                 if line[0] == '>':
                     current_RNA = sanitize(line[1:].rstrip())
                 else:
@@ -84,7 +84,7 @@ def locate_primer_pairs(fastas,
 
     def iterate_fasta(filenames):
         for filename in filenames:
-            f = open(filename, "rU")
+            f = open(filename, "r")
             name = None
             seq = ""
             for line in f:

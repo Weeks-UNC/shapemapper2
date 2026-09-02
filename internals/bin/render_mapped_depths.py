@@ -128,7 +128,7 @@ def load_primers(filename):
     if filename is None or filename == "":
         return []
 
-    f = open(filename, "rU")
+    f = open(filename, "r")
     primers = []
     i = 0
     for line in f:
@@ -159,7 +159,7 @@ class DataColumn:
 
 
 def load_table(filename):
-    f = open(filename, 'rU')
+    f = open(filename, 'r')
     headers = f.readline().rstrip().split('\t')
     seq = []
     seq_index = headers.index("Sequence")

@@ -4,7 +4,7 @@ import sys, os
 # FIXME: rewrite in c++
 
 def iterate_fastq(filename):
-    f = open(filename, "rU")
+    f = open(filename, "r")
     lines = []
     for line in f:
         # suppress jdb socket message
@@ -16,7 +16,7 @@ def iterate_fastq(filename):
             yield l
             lines = []
 
-input = open(sys.argv[1], 'rU')
+input = open(sys.argv[1], 'r')
 r1_out = open(sys.argv[2], 'w')
 r2_out = open(sys.argv[3], 'w')
 unpaired_out = open(sys.argv[4], 'w')

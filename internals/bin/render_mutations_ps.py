@@ -162,7 +162,7 @@ def load_primers(filename):
     if filename is None or filename == "":
         return []
 
-    f = open(filename, "rU")
+    f = open(filename, "r")
     primers = []
     for line in f:
         if line[0] == '>' or len(line) < 1:
@@ -956,7 +956,7 @@ def main():
                  mustspan=p.must_span)
     max_pages = p.max_pages
     primers = load_primers(p.primers)
-    input_file = open(p.input, 'rU')
+    input_file = open(p.input, 'r')
     o = open(p.output, "w")
 
     o.write(header())

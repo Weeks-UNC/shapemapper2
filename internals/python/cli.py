@@ -222,7 +222,7 @@ def run(args):
             sub_name=arg_dict['name']
             try:
                files = os.listdir(pipeline.out)
-               n7_message_file_regex =  "\." + sub_name + ".*_n7message.txt" 
+               n7_message_file_regex =  "\\." + sub_name + ".*_n7message.txt" 
                for f in files:
                   if re.findall(n7_message_file_regex, f) != []:
                      n7_message_file = pipeline.out + "/" + f
@@ -231,9 +231,9 @@ def run(args):
                   if "low N7" in warnings:
                      to_remove = []
 
-                     mod_ga_regex = sub_name + "_Modified.*\.mutga"
-                     unt_ga_regex = sub_name + "_Untreated.*\.mutga"
-                     txt_ga_regex =   "^[^.]*" + sub_name + ".*" + "profile\.txtga"
+                     mod_ga_regex = sub_name + "_Modified.*\\.mutga"
+                     unt_ga_regex = sub_name + "_Untreated.*\\.mutga"
+                     txt_ga_regex =   "^[^.]*" + sub_name + ".*" + "profile\\.txtga"
                      for f in files:
                         #if f.find(".mutga") != -1:
                         if re.findall(mod_ga_regex, f) != []:

@@ -15,7 +15,7 @@ import argparse, sys, os
 
 
 def get_lengths(filename):
-    f = open(filename, "rU")
+    f = open(filename, "r")
     lengths = []
     for line in f:
         if line[0] == ">":

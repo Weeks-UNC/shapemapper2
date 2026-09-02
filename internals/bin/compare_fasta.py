@@ -15,7 +15,7 @@ import traceback
 
 
 def load_fasta(fastaname, rna=None, convert_to_rna=True):
-    f = open(fastaname, "rU")
+    f = open(fastaname, "r")
     seq = ""
     rna_count = 0
     in_selected_rna = False

@@ -32,8 +32,8 @@ def iterate_sam(f):
         yield lines
 
 o = open(sys.argv[3], "w")
-f1 = open(sys.argv[1], "rU")
-f2 = open(sys.argv[2], "rU")
+f1 = open(sys.argv[1], "r")
+f2 = open(sys.argv[2], "r")
 
 for lines1, lines2 in zip_longest(iterate_sam(f1),
                                   iterate_sam(f2)):

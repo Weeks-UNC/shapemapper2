@@ -4,7 +4,7 @@ import sys, os
 # FIXME: rewrite in c++
 
 def iterate_fastq(filename):
-    f = open(filename, "rU")
+    f = open(filename, "r")
     lines = []
     for line in f:
         lines.append(line.strip())

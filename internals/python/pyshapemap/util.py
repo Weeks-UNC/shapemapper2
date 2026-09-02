@@ -45,7 +45,7 @@ def timestamp():
 def version():
     this_dir = os.path.dirname(os.path.realpath(__file__))
     release_dir = os.path.join(this_dir, "../../release")
-    f = open(os.path.join(release_dir, "version.txt"), "rU")
+    f = open(os.path.join(release_dir, "version.txt"), "r")
     return f.readline().strip()
 
 
@@ -191,7 +191,7 @@ def read_fasta_names_lengths(fastas):
     lowercase_error += "Please provide at least some unmasked sequence (uppercase characters) for each sequence."
 
     for filename in fastas:
-        f = open(filename, "rU")
+        f = open(filename, "r")
         is_all_lower = False
         for line in f:
             if line[0] == '>':
