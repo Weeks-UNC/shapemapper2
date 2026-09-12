@@ -112,7 +112,7 @@ namespace mutation_counter {
                 throw std::runtime_error("ERROR: Could not open input file " + filename +
                                          " - unknown error.\nCheck file and folder permissions.");
             }
-            if (BF::extension(BF::path(filename)) == ".gz") {
+            if (BF::path(filename).extension() == ".gz") {
                 // decompress gzip if file looks compressed
                 files.back()->push(BI::gzip_decompressor());
             }
@@ -142,7 +142,7 @@ namespace mutation_counter {
                         "ERROR: Could not open output file " + out_names[i] + "\nCheck file and folder permissions.");
             }
             std::unique_ptr <BI::filtering_ostream> out(new BI::filtering_ostream);
-            if (BF::extension(BF::path(out_names[i])) == ".gz") {
+            if (BF::path(out_names[i]).extension() == ".gz") {
                 // compress using gzip if requested
                 out->push(BI::gzip_compressor());
             }
