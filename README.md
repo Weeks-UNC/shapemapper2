@@ -65,6 +65,9 @@ ShapeMapper will only run on 64-bit Linux systems (Mac and Windows are not curre
 - Alternatively, you can build ShapeMapper if the provided binaries do not run on your platform. 
   Building is relatively straightforward using conda. See <a href="docs/building.md">building</a>.
 
+- If your site uses EasyBuild for managing scientific software, ShapeMapper2 can be installed with
+  EasyBuild. `eb ShapeMapper2-2.3-GCC-13.3.eb`
+  
 <!-- #### -->
 
 Usage
